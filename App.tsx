@@ -1,9 +1,7 @@
 
 
-
-
 import React, { useState, useCallback, useEffect } from 'react';
-import { PinData, PinterestBoard, Template, BrandingOptions } from './types';
+import { PinData, PinterestBoard, Template, BrandingOptions, SchedulePinPayload } from './types';
 import { generatePinContent } from './services/geminiService';
 import { fetchBoards, createPin, createVideoPin } from './services/pinterestService';
 import MediaUploader from './components/ImageUploader';
@@ -12,7 +10,7 @@ import DesignPreview from './components/DesignPreview';
 import BoardInput from './components/BoardInput';
 import PinResultCard from './components/PinResultCard';
 import LoadingSpinner from './components/LoadingSpinner';
-import { LogoIcon, SparklesIcon, ErrorIcon, PinterestIcon, CheckCircleIcon, UploadIcon, FilmIcon, ImageIcon, RefreshIcon, QuestionMarkCircleIcon } from './components/Icons';
+import { LogoIcon, SparklesIcon, ErrorIcon, PinterestIcon, CheckCircleIcon, UploadIcon, FilmIcon, ImageIcon, RefreshIcon, QuestionMarkCircleIcon, CalendarIcon } from './components/Icons';
 
 const initialBranding: BrandingOptions = {
     overlayText: 'Your Catchy Title Here',
@@ -65,6 +63,9 @@ function App() {
   const [postError, setPostError] = useState<string | null>(null);
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
   const [postingProgress, setPostingProgress] = useState<string | null>(null);
+  const [isScheduling, setIsScheduling] = useState(false);
+  const [scheduleError, setScheduleError] = useState<string | null>(null);
+  const [scheduleSuccess, setScheduleSuccess] = useState<string | null>(null);
 
   // Save branding options to localStorage whenever they change
   useEffect(() => {
@@ -97,6 +98,8 @@ function App() {
     setError(null);
     setPostError(null);
     setPostSuccess(null);
+    setScheduleError(null);
+    setScheduleSuccess(null);
     setPostingProgress(null);
     setCurrentStep(1);
     // Keep branding and pinterest token on partial reset
@@ -146,6 +149,8 @@ function App() {
     setGeneratedPin(null);
     setPostError(null);
     setPostSuccess(null);
+    setScheduleError(null);
+    setScheduleSuccess(null);
     setCurrentStep(3);
 
     try {
@@ -192,6 +197,8 @@ function App() {
     setIsPosting(true);
     setPostError(null);
     setPostSuccess(null);
+    setScheduleError(null);
+    setScheduleSuccess(null);
     setPostingProgress('');
 
     try {
@@ -224,6 +231,51 @@ function App() {
     } finally {
       setIsPosting(false);
       setPostingProgress(null);
+    }
+  };
+
+  const handleSchedulePin = async (boardId: string, title: string, description: string, scheduledAt: string) => {
+    if (!designedImageBase64 || !pinterestToken) {
+        setScheduleError("Missing data required for scheduling.");
+        return;
+    }
+
+    setIsScheduling(true);
+    setScheduleError(null);
+    setScheduleSuccess(null);
+    setPostError(null);
+    setPostSuccess(null);
+    
+    const payload: SchedulePinPayload = {
+      pinterestAccessToken: pinterestToken,
+      boardId,
+      title,
+      description,
+      imageBase64: designedImageBase64,
+      scheduledAt
+    };
+    
+    try {
+        const response = await fetch('/api/schedule', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(errorData.message || 'Scheduling failed.');
+        }
+
+        const result = await response.json();
+        setScheduleSuccess(result.message || `Pin successfully scheduled for ${new Date(scheduledAt).toLocaleString()}!`);
+
+    } catch (err) {
+        setScheduleError(err instanceof Error ? err.message : 'An unknown error occurred while scheduling.');
+    } finally {
+        setIsScheduling(false);
     }
   };
   
@@ -387,6 +439,10 @@ function App() {
                 postSuccess={postSuccess}
                 postingProgress={postingProgress}
                 isConnected={userBoards.length > 0}
+                onSchedulePin={handleSchedulePin}
+                isScheduling={isScheduling}
+                scheduleError={scheduleError}
+                scheduleSuccess={scheduleSuccess}
               />
             )}
           </div>
@@ -442,7 +498,7 @@ function App() {
                            <h4 className="font-semibold text-slate-800 mb-1">Add an Environment Variable</h4>
                            <p className="text-sm">In Vercel's "Configure Project" settings, find the Environment Variables section and add the following:</p>
                            <div className="mt-2 p-2 bg-slate-200 rounded font-mono text-sm">
-                               <strong>Name:</strong> <code className="text-slate-800">API_KEY</code><br/>
+                               <strong>Name:</strong> <code className="font-bold text-red-600">API_KEY</code> (Must be this exact name, case-sensitive)<br/>
                                <strong>Value:</strong> <code className="text-slate-800">[Paste your Google Gemini Key here]</code>
                            </div>
                        </div>
@@ -450,16 +506,27 @@ function App() {
 
                     <div>
                        <h3 className="font-bold text-lg text-slate-800 mb-2 border-b pb-2">Step 3: Troubleshooting Common Issues</h3>
-                       <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 text-yellow-800">
-                           <h4 className="font-semibold mb-2">Problem: "Failed to generate API key" or Billing Account Suspended</h4>
-                           <p className="text-sm mb-2">This is usually a problem with Google's automated security systems, not your fault. It's often triggered by new accounts or certain types of debit cards.</p>
-                           <p className="font-bold text-sm">Solution: The "Bypass" Method</p>
-                           <ol className="list-decimal list-inside text-sm mt-1 space-y-1">
-                               <li>Create a **brand new, separate Google Account**.</li>
-                               <li>Use the new account to get a free key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Google AI Studio</a>.</li>
-                               <li>Use this new, working key in your Vercel Environment Variables.</li>
-                               <li>You can try to fix your original Google account by contacting <a href="https://support.google.com/pay/gethelp" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Google Pay Support</a>, but use the new key to keep your project moving.</li>
-                           </ol>
+                       <div className="space-y-4">
+                           <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 text-yellow-800">
+                               <h4 className="font-semibold mb-2">Problem: The app shows "Generation Failed: API Key is invalid..."</h4>
+                               <p className="font-bold text-sm">This means the <code className="bg-yellow-200/50 px-1 py-0.5 rounded font-bold">API_KEY</code> in your Vercel project is missing, has a typo, or is from a suspended Google account.</p>
+                               <ol className="list-decimal list-inside text-sm mt-2 space-y-1">
+                                   <li>Go to your Vercel project **Settings &gt; Environment Variables**.</li>
+                                   <li>Ensure the variable is named EXACTLY <code className="bg-yellow-200/50 px-1 py-0.5 rounded font-bold">API_KEY</code> (all uppercase).</li>
+                                   <li>Ensure the value is the **working key** from a non-suspended Google account.</li>
+                                   <li>After saving, go to the **Deployments** tab and **redeploy** your project to apply the change.</li>
+                               </ol>
+                           </div>
+                           <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200 text-yellow-800">
+                               <h4 className="font-semibold mb-2">Problem: "Failed to generate API key" or Billing Account Suspended on Google's site</h4>
+                               <p className="text-sm mb-2">This is usually a problem with Google's automated security systems, not your fault.</p>
+                               <p className="font-bold text-sm">Solution: The "Bypass" Method</p>
+                               <ol className="list-decimal list-inside text-sm mt-1 space-y-1">
+                                   <li>Create a **brand new, separate Google Account**.</li>
+                                   <li>Use the new account to get a free key from <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="underline font-semibold">Google AI Studio</a>.</li>
+                                   <li>Use this new, working key in your Vercel Environment Variables.</li>
+                               </ol>
+                           </div>
                        </div>
                     </div>
                 </div>

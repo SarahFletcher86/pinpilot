@@ -7,7 +7,7 @@ export interface PinData {
 
 export interface PinterestBoard {
     id: string;
-    name: string;
+    name:string;
 }
 
 export interface PinPostPayload {
@@ -39,4 +39,13 @@ export interface BrandingOptions {
     colors: { text: string; accent: string };
     font: string;
     logo: string | null;
+}
+
+export interface SchedulePinPayload {
+    pinterestAccessToken: string;
+    boardId: string;
+    title: string;
+    description: string;
+    imageBase64: string;
+    scheduledAt: string;
 }
