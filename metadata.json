@@ -1,0 +1,5 @@
+{
+  "name": "AI Pinterest Pin Generator",
+  "description": "Upload an image or video, get SEO-optimized content, and post it directly to your Pinterest account. This tool generates a title, description, and tags, then lets you publish to any of your existing boards.",
+  "requestFramePermissions": []
+}
