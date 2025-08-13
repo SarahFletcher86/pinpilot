@@ -32,3 +32,11 @@ export interface VideoPinPostPayload {
 }
 
 export type Template = 'standard' | 'text-overlay' | 'bottom-bar';
+
+export interface BrandingOptions {
+    template: Template;
+    overlayText: string;
+    colors: { text: string; accent: string };
+    font: string;
+    logo: string | null;
+}

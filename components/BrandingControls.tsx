@@ -1,36 +1,21 @@
 import React, { useRef } from 'react';
-import { Template } from '../types';
+import { BrandingOptions } from '../types';
 import { LayoutTemplateIcon, TypeIcon, PaletteIcon, BrandingIcon } from './Icons';
 
 interface BrandingControlsProps {
-    template: Template;
-    onTemplateChange: (template: Template) => void;
-    text: string;
-    onTextChange: (text: string) => void;
-    colors: { text: string; accent: string };
-    onColorChange: (colors: { text: string; accent: string }) => void;
-    font: string;
-    onFontChange: (font: string) => void;
-    logo: string | null;
-    onLogoUpload: (logo: string | null) => void;
+    options: BrandingOptions;
+    setOptions: React.Dispatch<React.SetStateAction<BrandingOptions>>;
 }
 
 const FONTS = ['Poppins', 'Montserrat', 'Lato', 'Playfair Display', 'Oswald'];
-const TEMPLATES: { id: Template; name: string }[] = [
+const TEMPLATES: { id: BrandingOptions['template']; name: string }[] = [
     { id: 'standard', name: 'Standard' },
     { id: 'text-overlay', name: 'Text Overlay' },
     { id: 'bottom-bar', name: 'Bottom Bar' },
 ];
 
-const BrandingControls: React.FC<BrandingControlsProps> = (props) => {
-    const { 
-        template, onTemplateChange, 
-        text, onTextChange, 
-        colors, onColorChange, 
-        font, onFontChange, 
-        logo, onLogoUpload 
-    } = props;
-    
+const BrandingControls: React.FC<BrandingControlsProps> = ({ options, setOptions }) => {
+    const { template, overlayText, colors, font, logo } = options;
     const logoInputRef = useRef<HTMLInputElement>(null);
 
     const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -38,7 +23,7 @@ const BrandingControls: React.FC<BrandingControlsProps> = (props) => {
         if (file) {
             const reader = new FileReader();
             reader.onloadend = () => {
-                onLogoUpload(reader.result as string);
+                setOptions(prev => ({ ...prev, logo: reader.result as string }));
             };
             reader.readAsDataURL(file);
         }
@@ -54,7 +39,7 @@ const BrandingControls: React.FC<BrandingControlsProps> = (props) => {
                 <label className="block text-sm font-medium text-slate-700 mb-2 flex items-center"><LayoutTemplateIcon className="w-4 h-4 mr-2"/> Template</label>
                 <div className="grid grid-cols-3 gap-2">
                     {TEMPLATES.map(t => (
-                        <button key={t.id} onClick={() => onTemplateChange(t.id)} className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${template === t.id ? 'bg-slate-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>{t.name}</button>
+                        <button key={t.id} onClick={() => setOptions(prev => ({ ...prev, template: t.id }))} className={`px-3 py-2 text-sm font-semibold rounded-md transition-colors ${template === t.id ? 'bg-slate-800 text-white' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`}>{t.name}</button>
                     ))}
                 </div>
             </div>
@@ -65,8 +50,8 @@ const BrandingControls: React.FC<BrandingControlsProps> = (props) => {
                 <input 
                     id="overlay-text"
                     type="text" 
-                    value={text} 
-                    onChange={e => onTextChange(e.target.value)} 
+                    value={overlayText} 
+                    onChange={e => setOptions(prev => ({ ...prev, overlayText: e.target.value }))} 
                     className="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-slate-500 focus:border-slate-500"
                     placeholder="Your Catchy Title"
                 />
@@ -78,11 +63,11 @@ const BrandingControls: React.FC<BrandingControlsProps> = (props) => {
                 <div className="flex items-center space-x-4">
                     <div className="flex-1">
                         <label htmlFor="text-color" className="block text-xs text-slate-500">Text</label>
-                        <input id="text-color" type="color" value={colors.text} onChange={e => onColorChange({ ...colors, text: e.target.value })} className="w-full h-10 p-1 border-none rounded-md bg-transparent cursor-pointer" />
+                        <input id="text-color" type="color" value={colors.text} onChange={e => setOptions(prev => ({ ...prev, colors: {...prev.colors, text: e.target.value} }))} className="w-full h-10 p-1 border-none rounded-md bg-transparent cursor-pointer" />
                     </div>
                     <div className="flex-1">
                         <label htmlFor="accent-color" className="block text-xs text-slate-500">Accent</label>
-                        <input id="accent-color" type="color" value={colors.accent} onChange={e => onColorChange({ ...colors, accent: e.target.value })} className="w-full h-10 p-1 border-none rounded-md bg-transparent cursor-pointer" />
+                        <input id="accent-color" type="color" value={colors.accent} onChange={e => setOptions(prev => ({ ...prev, colors: {...prev.colors, accent: e.target.value} }))} className="w-full h-10 p-1 border-none rounded-md bg-transparent cursor-pointer" />
                     </div>
                 </div>
             </div>
@@ -91,7 +76,7 @@ const BrandingControls: React.FC<BrandingControlsProps> = (props) => {
             <div className="grid grid-cols-2 gap-4">
                 <div>
                     <label htmlFor="font-select" className="block text-sm font-medium text-slate-700 mb-2 flex items-center"><TypeIcon className="w-4 h-4 mr-2"/> Font</label>
-                    <select id="font-select" value={font} onChange={e => onFontChange(e.target.value)} className="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-slate-500 focus:border-slate-500">
+                    <select id="font-select" value={font} onChange={e => setOptions(prev => ({...prev, font: e.target.value}))} className="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-slate-500 focus:border-slate-500">
                         {FONTS.map(f => <option key={f} value={f} style={{fontFamily: f}}>{f}</option>)}
                     </select>
                 </div>
@@ -100,7 +85,7 @@ const BrandingControls: React.FC<BrandingControlsProps> = (props) => {
                      {logo ? (
                         <div className="flex items-center space-x-2">
                             <img src={logo} alt="Logo Preview" className="w-10 h-10 rounded-md object-contain bg-slate-100 p-1 border border-slate-200" />
-                            <button onClick={() => onLogoUpload(null)} className="w-full p-2 border border-slate-300 rounded-lg shadow-sm text-slate-700 bg-white hover:bg-slate-50 text-sm">Remove</button>
+                            <button onClick={() => setOptions(prev => ({...prev, logo: null}))} className="w-full p-2 border border-slate-300 rounded-lg shadow-sm text-slate-700 bg-white hover:bg-slate-50 text-sm">Remove</button>
                         </div>
                      ) : (
                         <button onClick={() => logoInputRef.current?.click()} className="w-full p-2 border border-slate-300 rounded-lg shadow-sm text-slate-700 bg-white hover:bg-slate-50 text-sm">Upload Logo</button>

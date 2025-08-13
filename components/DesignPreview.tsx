@@ -1,18 +1,15 @@
 import React, { useRef, useEffect } from 'react';
-import { Template } from '../types';
+import { BrandingOptions } from '../types';
 
 interface DesignPreviewProps {
     baseImage: string;
-    template: Template;
-    text: string;
-    colors: { text: string; accent: string };
-    font: string;
-    logo: string | null;
+    options: BrandingOptions;
     onDesignChange: (designedImage: string) => void;
 }
 
 const DesignPreview: React.FC<DesignPreviewProps> = (props) => {
-    const { baseImage, template, text, colors, font, logo, onDesignChange } = props;
+    const { baseImage, options, onDesignChange } = props;
+    const { template, overlayText: text, colors, font, logo } = options;
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -103,7 +100,7 @@ const DesignPreview: React.FC<DesignPreviewProps> = (props) => {
             }
         };
 
-    }, [baseImage, template, text, colors, font, logo, onDesignChange]);
+    }, [baseImage, options, onDesignChange]);
 
     return <canvas ref={canvasRef} className="w-full h-auto rounded-lg shadow-md border border-slate-200" />;
 };

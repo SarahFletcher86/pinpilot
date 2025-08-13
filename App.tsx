@@ -1,8 +1,9 @@
 
 
 
+
 import React, { useState, useCallback, useEffect } from 'react';
-import { PinData, PinterestBoard, Template } from './types';
+import { PinData, PinterestBoard, Template, BrandingOptions } from './types';
 import { generatePinContent } from './services/geminiService';
 import { fetchBoards, createPin, createVideoPin } from './services/pinterestService';
 import MediaUploader from './components/ImageUploader';
@@ -12,6 +13,14 @@ import BoardInput from './components/BoardInput';
 import PinResultCard from './components/PinResultCard';
 import LoadingSpinner from './components/LoadingSpinner';
 import { LogoIcon, SparklesIcon, ErrorIcon, PinterestIcon, CheckCircleIcon, UploadIcon, FilmIcon, ImageIcon, RefreshIcon, QuestionMarkCircleIcon } from './components/Icons';
+
+const initialBranding: BrandingOptions = {
+    overlayText: 'Your Catchy Title Here',
+    colors: { text: '#FFFFFF', accent: '#000000' },
+    font: 'Poppins',
+    logo: null,
+    template: 'standard',
+};
 
 function App() {
   // Core state
@@ -29,12 +38,23 @@ function App() {
   const [showHelp, setShowHelp] = useState<boolean>(false);
   
   // Branding state
+  const [brandingOptions, setBrandingOptions] = useState<BrandingOptions>(() => {
+    try {
+        const saved = localStorage.getItem('brandingOptions');
+        if (saved) {
+            const parsed = JSON.parse(saved);
+            // Basic validation to ensure parsed object has expected keys
+            if (parsed.colors && parsed.font) {
+                return parsed;
+            }
+        }
+    } catch (e) {
+        console.error("Failed to parse branding options from localStorage", e);
+    }
+    return initialBranding;
+  });
+  
   const [boards, setBoards] = useState<string>('Home Decor, DIY Projects, Recipes, Fashion');
-  const [overlayText, setOverlayText] = useState('Your Catchy Title Here');
-  const [brandColors, setBrandColors] = useState({ text: '#FFFFFF', accent: '#000000' });
-  const [brandFont, setBrandFont] = useState('Poppins');
-  const [brandLogo, setBrandLogo] = useState<string | null>(null);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template>('standard');
 
   // Pinterest state
   const [pinterestToken, setPinterestToken] = useState<string>(() => localStorage.getItem('pinterestAccessToken') || '');
@@ -45,6 +65,11 @@ function App() {
   const [postError, setPostError] = useState<string | null>(null);
   const [postSuccess, setPostSuccess] = useState<string | null>(null);
   const [postingProgress, setPostingProgress] = useState<string | null>(null);
+
+  // Save branding options to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('brandingOptions', JSON.stringify(brandingOptions));
+  }, [brandingOptions]);
 
   const handlePinterestTokenChange = (token: string) => {
     setPinterestToken(token);
@@ -76,8 +101,8 @@ function App() {
     setCurrentStep(1);
     // Keep branding and pinterest token on partial reset
     if(fullReset) {
-        setBrandLogo(null);
-        setOverlayText('Your Catchy Title Here');
+        setBrandingOptions(initialBranding);
+        localStorage.removeItem('brandingOptions');
     }
   };
 
@@ -256,16 +281,8 @@ function App() {
           {currentStep >= 2 && frameForAI && (
              <div className="animate-fade-in">
                 <BrandingControls
-                    logo={brandLogo}
-                    template={selectedTemplate}
-                    onTemplateChange={setSelectedTemplate}
-                    text={overlayText}
-                    onTextChange={setOverlayText}
-                    colors={brandColors}
-                    onColorChange={setBrandColors}
-                    font={brandFont}
-                    onFontChange={setBrandFont}
-                    onLogoUpload={setBrandLogo}
+                    options={brandingOptions}
+                    setOptions={setBrandingOptions}
                 />
              </div>
           )}
@@ -330,11 +347,7 @@ function App() {
             {currentStep === 2 && frameForAI && (
               <DesignPreview
                 baseImage={frameForAI}
-                template={selectedTemplate}
-                text={overlayText}
-                colors={brandColors}
-                font={brandFont}
-                logo={brandLogo}
+                options={brandingOptions}
                 onDesignChange={handleDesignChange}
               />
             )}
