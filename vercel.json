@@ -1,18 +1,10 @@
 {
-  "functions": {
-    "api/**/*.ts": { "runtime": "nodejs20.x" }
-  },
+  "version": 2,
+  "buildCommand": "npm ci || npm install && npm run build",
+  "installCommand": "npm ci || npm install",
+  "framework": "vite",
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        { "key": "X-Frame-Options", "value": "ALLOWALL" },
-        { "key": "Content-Security-Policy", "value": "frame-ancestors 'self' https://sellcraftco.com https://*.sellcraftco.com;" }
-      ]
-    }
   ]
 }
