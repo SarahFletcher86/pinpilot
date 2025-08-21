@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Pin Pilot brand tokens */
+:root{
+  --pp-primary: #5459d4; /* violet */
+  --pp-accent:  #74d6d8; /* aqua */
+  --pp-ink:     #1d1d1f;
+  --pp-body:    #2f2f3a;
+  --pp-bg:      #f5f6ff; /* #e5edff also works */
+}
+
+/* Page base */
+html, body, #root { height: 100%; }
+body { background: var(--pp-bg); color: var(--pp-body); }
+
+/* Simple card style */
+.pp-card      { @apply rounded-2xl shadow-md bg-white border border-black/5; }
+.pp-card-pad  { @apply p-6 md:p-8; }
+
+/* Buttons */
+.pp-btn       { @apply inline-flex items-center justify-center rounded-xl px-5 py-3 font-medium transition; }
+.pp-btn-primary       { background: var(--pp-primary); color: white; }
+.pp-btn-primary:hover { filter: brightness(0.95); }
+.pp-btn-ghost         { @apply border border-black/10 bg-white hover:bg-black/5; }
+
+/* Inputs */
+.pp-input           { @apply w-full rounded-xl border border-black/10 bg-white px-4 py-3 outline-none; }
+.pp-input:focus     { @apply ring-2 ring-[var(--pp-accent)] ring-offset-2; }
