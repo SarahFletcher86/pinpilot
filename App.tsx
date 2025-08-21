@@ -4,10 +4,10 @@ export default function App() {
   return (
     <main className="app-shell">
       {/* Header */}
-      <header className="site-header">
+     <header className="site-header">
   <img src="/logo.svg" alt="Pin Pilot logo" className="logo" />
   <div className="brand-text">
-    <h1 className="site-title">Pin Pilot</h1>
+    <h1 className="sr-only">Pin Pilot</h1>
     <p className="tagline">Pin Better. Grow Faster.</p>
   </div>
 </header>
