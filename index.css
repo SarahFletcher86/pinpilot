@@ -1,4 +1,4 @@
-/* (Optional) keep these if you want Tailwind utility classes available */
+/* Tailwind (keep if installed; harmless if not) */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -7,15 +7,17 @@
 :root{
   --pp-primary:#5459d4; /* violet */
   --pp-accent:#74d6d8;  /* aqua */
-  --pp-ink:#1d1d1f;
-  --pp-body:#2f2f3a;
-  --pp-bg:#f5f6ff;
-  --pp-gold:#f9d643;
+  --pp-ink:#1d1d1f;     /* near-black */
+  --pp-body:#2f2f3a;    /* body text */
+  --pp-bg:#f5f6ff;      /* soft lilac/indigo bg */
+  --pp-gold:#f9d643;    /* accent gold */
 }
 
 /* --------------- Base (font / background) --------------- */
 html, body, #root { height:100%; }
-html { font-family: "Poppins", ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; }
+html {
+  font-family: "Poppins","Open Sans",ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Helvetica Neue",Arial;
+}
 body { background: var(--pp-bg); color: var(--pp-body); margin:0; }
 
 /* ------------------------- Shell ------------------------ */
@@ -37,31 +39,37 @@ body { background: var(--pp-bg); color: var(--pp-body); margin:0; }
 
 /* ------------------------- Cards ------------------------ */
 .pp-card{
-  border-radius:1rem;           /* = rounded-2xl */
+  border-radius:1rem;
   box-shadow: 0 8px 30px rgba(0,0,0,.06);
   background:#fff;
   border:1px solid rgba(0,0,0,.05);
+  padding:1.25rem;
+  margin-bottom: 1rem;
 }
-.pp-card-pad{ padding:1.25rem; }
-@media (min-width:768px){ .pp-card-pad{ padding:1.75rem; } }
+@media (min-width:768px){ .pp-card{ padding:1.75rem; } }
 .pp-card-title{ font-weight:600; margin:0 0 .5rem; color:var(--pp-ink); font-size:1.125rem; }
 @media (min-width:768px){ .pp-card-title{ font-size:1.25rem; } }
-.pp-card-sub{ font-size:.9rem; color:rgba(0,0,0,.6); margin:0 0 1rem; }
+.pp-card-sub{ font-size:.95rem; color:rgba(0,0,0,.65); margin:0 0 1rem; }
 
 /* ------------------------ Buttons ----------------------- */
 .pp-btn{
   display:inline-flex; align-items:center; justify-content:center;
   border-radius: .75rem;
-  padding:.8rem 1.25rem;
-  font-weight:500; line-height:1;
+  padding:.8rem 1.1rem;
+  font-weight:600; line-height:1;
   transition: filter .15s ease, background .15s ease, box-shadow .15s ease;
-  box-shadow: 0 6px 20px rgba(84,89,212,.22);
   border:1px solid transparent;
   cursor:pointer;
 }
-.pp-btn.primary{ background:var(--pp-primary); color:#fff; }
+.pp-btn.primary{
+  background:var(--pp-primary); color:#fff;
+  box-shadow: 0 6px 20px rgba(84,89,212,.22);
+}
 .pp-btn.primary:hover{ filter:brightness(.95); }
-.pp-btn.ghost{ background:#fff; color:var(--pp-ink); border-color:rgba(0,0,0,.1); box-shadow:none; }
+.pp-btn.ghost{
+  background:#fff; color:var(--pp-ink);
+  border-color:rgba(0,0,0,.1);
+}
 .pp-btn.ghost:hover{ background:rgba(0,0,0,.05); }
 
 /* ------------------------- Inputs ----------------------- */
@@ -75,8 +83,7 @@ body { background: var(--pp-bg); color: var(--pp-body); margin:0; }
   font-size:.95rem;
 }
 .pp-input:focus{
-  box-shadow: 0 0 0 3px rgba(116,214,216,.35),
-              0 0 0 5px rgba(255,255,255,0);
+  box-shadow: 0 0 0 3px rgba(116,214,216,.35);
   border-color: rgba(116,214,216,.9);
 }
 
@@ -85,4 +92,4 @@ body { background: var(--pp-bg); color: var(--pp-body); margin:0; }
 @media (min-width:768px){ .cards-grid{ grid-template-columns: repeat(2, minmax(0,1fr)); gap:1.5rem; } }
 
 /* ------------------------- Footer ----------------------- */
-.footer{ text-align:center; font-size:.8rem; color:rgba(0,0,0,.5); padding:2.5rem 0; }
+.footer{ text-align:center; font-size:.85rem; color:rgba(0,0,0,.55); padding:2.5rem 0; }

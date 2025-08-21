@@ -7,25 +7,26 @@
       content="width=device-width, initial-scale=1, maximum-scale=1"
     />
     <title>Pin Pilot</title>
-
-    <!-- Brand theme color (Pill/Tab color on mobile) -->
     <meta name="theme-color" content="#5459d4" />
 
-    <!-- App icons (optional; safe to leave even if files don't exist yet) -->
-    <link rel="icon" href="/favicon.ico" sizes="any" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <!-- Fonts (match your WP site) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Poppins:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
 
-    <!-- Your Tailwind/CSS bundle -->
+    <!-- Favicon / App icon (safe if file missing) -->
+    <link rel="icon" href="/logo.svg" />
+
+    <!-- Global CSS -->
     <link rel="stylesheet" href="/index.css" />
   </head>
 
   <body>
-    <!-- Vite mounts React here -->
     <div id="root"></div>
-
-    <!-- IMPORTANT: Vite will compile TSX; do NOT open this file directly.
-         Always run via `npm run dev` so this module is served by Vite. -->
+    <!-- Vite entry (don’t open this file directly; use npm run dev) -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
