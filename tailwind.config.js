@@ -1,32 +1,25 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+module.exports = {
   content: [
     "./index.html",
-    "./**/*.{ts,tsx,html}"
+    "./index.tsx",
+    "./App.tsx",
+    "./components/**/*.{ts,tsx}"
   ],
   theme: {
     extend: {
       colors: {
-        brand: {
-          light: "#e5edff",
-          violet: "#7d71ff",
-          aqua: "#74d6d8",
-          white: "#faffff",
-          deep: "#5459d4",
-          gold: "#f9d643"
-        }
-      },
-      fontFamily: {
-        sans: ["'Open Sans'", "ui-sans-serif", "system-ui", "Arial"],
-        display: ["Poppins", "ui-sans-serif", "system-ui", "Arial"]
+        primary: "#5459d4",
+        accent:  "#74d6d8",
+        ink:     "#1d1d1f",
+        body:    "#2f2f3a",
+        bg:      "#f5f6ff"
       },
       borderRadius: {
-        card: "1.25rem"
-      },
-      boxShadow: {
-        card: "0 10px 30px rgba(0,0,0,0.10)"
+        xl: "1rem",
+        "2xl": "1.25rem"
       }
     }
   },
-  plugins: [],
+  plugins: []
 };

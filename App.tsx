@@ -1,114 +1,130 @@
-import React, { useState } from 'react';
-import ConnectPinterest from './components/ConnectPinterest';
-import ScheduleForm from './components/ScheduleForm';
-import BoardSelect from './components/BoardSelect';
+import React, { useMemo } from "react";
 
-function App() {
-  // Pro flag from URL: https://your-site/?pro=1
-  const isPro = new URLSearchParams(window.location.search).get('pro') === '1';
+function Logo() {
+  return (
+    <div className="brand">
+      <img src="/logo.svg" alt="Pin Pilot" width={36} height={36} />
+      <div className="brand-title">Pin Pilot</div>
+      <span className="badge">Beta</span>
+    </div>
+  );
+}
 
-  // Existing state you already had
-  const [brandingOptions, setBrandingOptions] = useState<Record<string, any>>({});
-  const [frameForAI, setFrameForAI] = useState<string | null>(null);
-  const [designedImageBase64, setDesignedImageBase64] = useState<string | null>(null);
-  const [generatedPin, setGeneratedPin] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [postError, setPostError] = useState<string | null>(null);
-  const [postSuccess, setPostSuccess] = useState<string | null>(null);
-  const [scheduleError, setScheduleError] = useState<string | null>(null);
-  const [scheduleSuccess, setScheduleSuccess] = useState<string | null>(null);
-  const [postingProgress, setPostingProgress] = useState<string | null>(null);
-  const [currentStep, setCurrentStep] = useState<number>(1);
-
-  // New: boards + selection for posting/scheduling
-  const [userBoards, setUserBoards] = useState<any[]>([]);
-  const [selectedBoardId, setSelectedBoardId] = useState<string>('');
-
-  const resetAll = (fullReset: boolean = false) => {
-    setFrameForAI(null);
-    setDesignedImageBase64(null);
-    setGeneratedPin(null);
-    setError(null);
-    setPostError(null);
-    setPostSuccess(null);
-    setScheduleError(null);
-    setScheduleSuccess(null);
-    setPostingProgress(null);
-    setCurrentStep(1);
-
-    setBrandingOptions({});
-    setUserBoards([]);
-    setSelectedBoardId('');
-
-    if (fullReset) {
-      localStorage.removeItem('branding');
-      localStorage.removeItem('pinterestAccessToken');
-    }
-  };
+export default function App() {
+  // simple flag to show Pro section when ?pro=1 is in the URL
+  const isPro = useMemo(() => {
+    return new URLSearchParams(window.location.search).get("pro") === "1";
+  }, []);
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 p-6">
-      <header className="max-w-3xl mx-auto mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Pin Pilot</h1>
-        <button
-          onClick={() => resetAll(true)}
-          className="px-3 py-2 rounded-md border border-slate-300 bg-white hover:bg-slate-50"
-        >
-          Reset All
-        </button>
+    <div className="app-shell">
+      <header className="container header">
+        <Logo />
+        <nav style={{display:"flex", gap:"10px"}}>
+          <a className="pp-btn ghost" href="https://pinpilotapp.com" target="_blank" rel="noreferrer">Website</a>
+          <button className="pp-btn primary" onClick={() => {
+            localStorage.clear();
+            window.location.href = "/";
+          }}>Reset All</button>
+        </nav>
       </header>
 
-      <main className="max-w-3xl mx-auto space-y-6">
+      <main className="container" style={{paddingBottom:"40px"}}>
+        {/* Free notice (keeps your current copy) */}
         {!isPro && (
-          <div className="p-4 rounded-lg border bg-white">
-            <p>
-              You’re on the free version. To unlock Pinterest connect & scheduling, open the Pro link:
-            </p>
-            <p className="mt-2">
-              <a
-                href={`${window.location.pathname}?pro=1`}
-                className="text-indigo-600 underline"
-              >
+          <div className="pp-card pp-card-pad" style={{marginBottom:"20px"}}>
+            <p style={{margin:0}}>
+              You’re on the free version. To unlock Pinterest connect & scheduling, open the Pro link:&nbsp;
+              <a href="/?pro=1" style={{color:"var(--pp-primary)", fontWeight:600}}>
                 Enable Pro features (temporary preview)
               </a>
             </p>
           </div>
         )}
 
-        {isPro && (
-          <>
-            {/* 1) Connect to Pinterest (OAuth or paste token). When boards load, we store them. */}
-            <ConnectPinterest onBoardsFetched={setUserBoards} />
-
-            {/* 2) Choose a board once we have them */}
-            {userBoards.length > 0 && (
-              <div className="p-4 rounded-lg border bg-white">
-                <BoardSelect
-                  boards={userBoards}
-                  value={selectedBoardId}
-                  onChange={setSelectedBoardId}
-                />
-                {selectedBoardId === '' && (
-                  <p className="text-xs text-slate-500 mt-1">Select a board to enable scheduling.</p>
-                )}
+        {/* Cards */}
+        <section className="cards-grid">
+          {/* Connect Pinterest */}
+          <article className="pp-card">
+            <div className="pp-card-pad">
+              <h3 className="pp-card-title">Connect Pinterest</h3>
+              <p className="pp-card-sub">
+                Secure OAuth flow to fetch your boards and let Pin Pilot post on your behalf.
+              </p>
+              <div style={{display:"flex", gap:"10px", flexWrap:"wrap"}}>
+                <a className="pp-btn primary" href="/api/auth/start">Connect with Pinterest</a>
+                <a className="pp-btn ghost" href="https://developers.pinterest.com" target="_blank" rel="noreferrer">
+                  Learn about permissions
+                </a>
               </div>
-            )}
-
-            {/* 3) Schedule form uses the selected board id (auto-filled, read-only inside) */}
-            <div className="p-4 rounded-lg border bg-white">
-              <ScheduleForm selectedBoardId={selectedBoardId} />
             </div>
-          </>
-        )}
+          </article>
 
-        {/* (Your free features / designer could live here too) */}
+          {/* AI Keywords & Descriptions (Gemini) */}
+          <article className="pp-card">
+            <div className="pp-card-pad">
+              <h3 className="pp-card-title">AI-Optimized Keywords & Descriptions</h3>
+              <p className="pp-card-sub">
+                Use Gemini to generate SEO-friendly titles, descriptions, and tags that match Pinterest search intent.
+              </p>
+              <div style={{display:"flex", gap:"10px", flexWrap:"wrap"}}>
+                <a className="pp-btn primary" href="/?pro=1#ai">Open AI Assistant</a>
+                <button className="pp-btn ghost" onClick={() => alert("Coming soon: inline AI text panel")}>
+                  Preview
+                </button>
+              </div>
+            </div>
+          </article>
+
+          {/* Scheduler */}
+          <article className="pp-card">
+            <div className="pp-card-pad">
+              <h3 className="pp-card-title">Smart Scheduler</h3>
+              <p className="pp-card-sub">
+                Pick a board, paste an image URL, choose a time — we’ll handle the rest. (Pro feature)
+              </p>
+              <div style={{display:"flex", gap:"10px", flexWrap:"wrap"}}>
+                <a className="pp-btn primary" href="#schedule">Open Scheduler</a>
+                <a className="pp-btn ghost" href="/?pro=1">Unlock Pro</a>
+              </div>
+            </div>
+          </article>
+
+          {/* Templates */}
+          <article className="pp-card">
+            <div className="pp-card-pad">
+              <h3 className="pp-card-title">Pinterest-Ready Templates</h3>
+              <p className="pp-card-sub">
+                Start with polished layouts that fit 1000×1500 and 1000×1800 best-practice sizes.
+              </p>
+              <button className="pp-btn primary" onClick={() => alert("Coming soon: template picker")}>
+                Browse Templates
+              </button>
+            </div>
+          </article>
+        </section>
+
+        {/* Anchor target for Scheduler (keeps page simple for now) */}
+        <div id="schedule" style={{marginTop:"24px"}}>
+          <div className="pp-card">
+            <div className="pp-card-pad">
+              <h3 className="pp-card-title">Schedule a Pin</h3>
+              <p className="pp-card-sub">Quick demo form (wires into your existing API route).</p>
+              <form onSubmit={(e) => { e.preventDefault(); alert("Submit to /api/schedule"); }}>
+                <input className="pp-input" placeholder="Board ID" style={{marginBottom:"10px"}} />
+                <input className="pp-input" placeholder="Title" style={{marginBottom:"10px"}} />
+                <textarea className="pp-input" placeholder="Description" rows={3} style={{marginBottom:"10px"}} />
+                <input className="pp-input" placeholder="Destination Link (optional)" style={{marginBottom:"10px"}} />
+                <input className="pp-input" placeholder="Image URL" style={{marginBottom:"10px"}} />
+                <input className="pp-input" type="datetime-local" style={{marginBottom:"12px"}} />
+                <button className="pp-btn primary" type="submit">Schedule Pin</button>
+              </form>
+            </div>
+          </div>
+        </div>
       </main>
 
-      <footer className="max-w-3xl mx-auto mt-10 text-center text-sm text-slate-500">
-        <p>© {new Date().getFullYear()} Pin Pilot</p>
-      </footer>
+      <footer className="footer container">© 2025 Pin Pilot</footer>
     </div>
   );
 }
-
-export default App;

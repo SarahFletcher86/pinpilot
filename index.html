@@ -1,21 +1,31 @@
 <!doctype html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, maximum-scale=1"
+    />
+    <title>Pin Pilot</title>
 
-  <title>Pin Pilot</title>
-  <meta name="description" content="Create, optimize, and schedule Pinterest pins with Pin Pilot." />
+    <!-- Brand theme color (Pill/Tab color on mobile) -->
+    <meta name="theme-color" content="#5459d4" />
 
-  <!-- Brand fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+    <!-- App icons (optional; safe to leave even if files don't exist yet) -->
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-  <!-- App styles (Tailwind builds into this) -->
-  <link rel="stylesheet" href="/index.css" />
-</head>
-<body>
-  <div id="root"></div>
-  <script type="module" src="/index.tsx"></script>
-</body>
+    <!-- Your Tailwind/CSS bundle -->
+    <link rel="stylesheet" href="/index.css" />
+  </head>
+
+  <body>
+    <!-- Vite mounts React here -->
+    <div id="root"></div>
+
+    <!-- IMPORTANT: Vite will compile TSX; do NOT open this file directly.
+         Always run via `npm run dev` so this module is served by Vite. -->
+    <script type="module" src="/index.tsx"></script>
+  </body>
 </html>
