@@ -136,3 +136,19 @@ body { background: var(--pp-bg); color: var(--pp-body); margin:0; }
 
 /* Footer */
 .site-footer { margin: 28px 0 8px; font-size: 12px; color: #6b7280; text-align: center; }
+/* Brand text next to logo */
+.brand-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.tagline {
+  font-size: 1rem;
+  font-weight: 500;
+  color: var(--pp-accent);
+  margin: 2px 0 0;
+}
+@media (min-width: 640px) {
+  .tagline { font-size: 1.1rem; margin-top: 4px; }
+}
