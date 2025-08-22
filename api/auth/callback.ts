@@ -1,4 +1,4 @@
-// Handles Pinterest redirect back to your app and exchanges code for a token
+// Handles Pinterest redirect back to your app and exchanges ?code for an access token
 // Path: /api/auth/callback
 
 export default async function handler(req: any, res: any) {
@@ -16,16 +16,16 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // Read query params
-    const code = req.query?.code as string | undefined;
-    const returnedState = req.query?.state as string | undefined;
+    // --- Read query params from Pinterest redirect
+    const code = (req.query?.code as string) || "";
+    const returnedState = (req.query?.state as string) || "";
 
     if (!code) {
       res.status(400).json({ ok: false, error: "Missing ?code in callback URL" });
       return;
     }
 
-    // Verify state from cookie (best-effort; if it’s missing we still proceed during testing)
+    // --- Optional: verify CSRF state from our cookie (best-effort in testing)
     const cookieHeader = req.headers.cookie || "";
     const stateCookie = cookieHeader
       .split(";")
@@ -38,28 +38,39 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
-    // Exchange the code for an access token
+    // --- Exchange code for token (Pinterest requires x-www-form-urlencoded)
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      code, // must be the exact code Pinterest sent
+      redirect_uri: redirectUri, // must match your Pinterest app redirect setting
+      client_id: clientId,
+      client_secret: clientSecret,
+    }).toString();
+
     const tokenResp = await fetch("https://api.pinterest.com/v5/oauth/token", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: redirectUri,
-        client_id: clientId,
-        client_secret: clientSecret,
-      }),
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        Accept: "application/json",
+      },
+      body,
     });
 
-    const tokenData = await tokenResp.json();
+    // Try to parse JSON either way to reveal any useful error
+    let tokenData: any = null;
+    try {
+      tokenData = await tokenResp.json();
+    } catch {
+      tokenData = { raw: await tokenResp.text() };
+    }
 
     if (!tokenResp.ok) {
       res.status(tokenResp.status).json({ ok: false, error: tokenData });
       return;
     }
 
-    // For now, just show the token JSON in the browser so we can confirm it works.
-    // Later we’ll stash it in a cookie/session/DB and redirect back to the app UI.
+    // For now: show token JSON so we can confirm success.
+    // Next step will be to store this (cookie/session/DB) and redirect back to the app.
     res.status(200).json({ ok: true, token: tokenData });
   } catch (err: any) {
     res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
