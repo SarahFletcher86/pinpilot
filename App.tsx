@@ -1,4 +1,5 @@
 import React from "react";
+import DebugPanel from "./components/DebugPanel";
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
       {/* Welcome / Free notice */}
       <section className="pp-card">
         <div className="pp-card-pad">
+          <DebugPanel />
           <h2 className="section-title">Welcome 👋</h2>
           <p className="lead">
             You’re on the <strong>Free</strong> version. Upgrade to unlock Pinterest
