@@ -31,18 +31,20 @@ export default function App() {
 
       {/* Feature cards (feel free to keep/remove) */}
       <section className="feature-grid">
-        <article className="pp-card">
-          <div className="pp-card-pad">
-            <h3 className="card-title">Connect Pinterest</h3>
-            <p className="card-copy">Secure OAuth flow to fetch boards and post on your behalf.</p>
-            <button
-  className="pp-btn pp-btn-primary"
-  onClick={() => (window.location.href = "/api/auth/start")}
->
-  Connect
-</button>
-          </div>
-        </article>
+   <article className="pp-card">
+  <div className="pp-card-pad">
+    <h3 className="card-title">Connect Pinterest</h3>
+    <p className="card-copy">
+      Secure OAuth flow to fetch boards and post on your behalf.
+    </p>
+    <button
+      className="pp-btn pp-btn-primary"
+      onClick={() => (window.location.href = "/api/auth/start")}
+    >
+      Connect
+    </button>
+  </div>
+</article>
 
         <article className="pp-card">
           <div className="pp-card-pad">
