@@ -35,7 +35,12 @@ export default function App() {
           <div className="pp-card-pad">
             <h3 className="card-title">Connect Pinterest</h3>
             <p className="card-copy">Secure OAuth flow to fetch boards and post on your behalf.</p>
-            <button className="pp-btn primary">Connect</button>
+            <button
+  className="pp-btn pp-btn-primary"
+  onClick={() => (window.location.href = "/api/auth/start")}
+>
+  Connect
+</button>
           </div>
         </article>
 

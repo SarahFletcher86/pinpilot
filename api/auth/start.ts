@@ -1,17 +1,51 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node'
+// Starts the Pinterest OAuth flow
+// Path: /api/auth/start
 
-export default async function handler(req: VercelRequest, res: VercelResponse){
-  // generate a CSRF state
-  const state = Math.random().toString(36).slice(2)
-  const params = new URLSearchParams({
-    client_id: process.env.PINTEREST_CLIENT_ID!,
-    redirect_uri: process.env.PINTEREST_REDIRECT_URI!,
-    response_type: 'code',
-    scope: 'boards:read,pins:read,pins:write',
-    state
-  })
-  // store state in a cookie
-  res.setHeader('Set-Cookie', `pp_state=${state}; Path=/; HttpOnly; Secure; SameSite=Lax`)
-  const url = `https://www.pinterest.com/oauth/?${params.toString()}`
-  res.status(200).json({ url })
+const SCOPES = [
+  "boards:read",
+  "pins:read",
+  "pins:write",
+  "user_accounts:read",
+].join(",");
+
+function randomState(len = 24) {
+  const chars =
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+  let out = "";
+  for (let i = 0; i < len; i++) out += chars[Math.floor(Math.random() * chars.length)];
+  return out;
+}
+
+export default async function handler(req: any, res: any) {
+  const clientId = process.env.PINTEREST_CLIENT_ID;
+  const redirectUri = process.env.PINTEREST_REDIRECT_URI;
+
+  if (!clientId || !redirectUri) {
+    res
+      .status(500)
+      .send(
+        "Missing env vars. Set PINTEREST_CLIENT_ID and PINTEREST_REDIRECT_URI."
+      );
+    return;
+  }
+
+  // CSRF protection: store a random state in a cookie and pass it to Pinterest
+  const state = randomState();
+  res.setHeader(
+    "Set-Cookie",
+    `pp_oauth_state=${state}; Path=/; HttpOnly; SameSite=Lax; Secure`
+  );
+
+  const authUrl =
+    "https://www.pinterest.com/oauth/?" +
+    new URLSearchParams({
+      response_type: "code",
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      scope: SCOPES,
+      state,
+    }).toString();
+
+  res.writeHead(302, { Location: authUrl });
+  res.end();
 }
