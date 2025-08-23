@@ -1,11 +1,9 @@
 // /api/auth/callback.ts
-// Handles Pinterest redirect back to your app and exchanges code for a token
-
 export default async function handler(req: any, res: any) {
   try {
-    const clientId = process.env.PINTEREST_CLIENT_ID;
-    const clientSecret = process.env.PINTEREST_CLIENT_SECRET;
-    const redirectUri = process.env.PINTEREST_REDIRECT_URI;
+    const clientId = process.env.PINTEREST_CLIENT_ID!;
+    const clientSecret = process.env.PINTEREST_CLIENT_SECRET!;
+    const redirectUri = process.env.PINTEREST_REDIRECT_URI!;
 
     if (!clientId || !clientSecret || !redirectUri) {
       return res.status(500).json({
@@ -15,59 +13,49 @@ export default async function handler(req: any, res: any) {
       });
     }
 
-    // Read query params Pinterest sent back
     const code = (req.query?.code as string) || "";
     const returnedState = (req.query?.state as string) || "";
-
     if (!code) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "Missing ?code in callback URL" });
+      return res.status(400).json({ ok: false, error: "Missing ?code" });
     }
 
-    // Best-effort CSRF check; relaxed during testing
+    // best-effort state check (don’t block testing)
     const cookieHeader = req.headers.cookie || "";
-    const stateCookie = cookieHeader
+    const savedState = cookieHeader
       .split(";")
       .map((c) => c.trim())
-      .find((c) => c.startsWith("pp_oauth_state="));
-    const savedState = stateCookie?.split("=")[1];
-
+      .find((c) => c.startsWith("pp_oauth_state="))
+      ?.split("=")[1];
     if (savedState && returnedState && savedState !== returnedState) {
-      // Don’t block testing; log and continue
-      console.warn("Pinterest OAuth: state mismatch (continuing for testing)");
-      // return res.status(400).json({ ok: false, error: "State mismatch" });
+      console.warn("OAuth state mismatch (continuing for testing).");
     }
 
-    // --- Token exchange (critical fix is the .toString() below) ---
+    // --- Pinterest token exchange (use Basic auth + x-www-form-urlencoded body) ---
+    const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
     const body = new URLSearchParams({
       grant_type: "authorization_code",
       code,
-      redirect_uri: redirectUri,     // must exactly match the one registered
-      client_id: clientId,
-      client_secret: clientSecret,
+      redirect_uri: redirectUri, // must EXACTLY match the one in the Pinterest app settings
     }).toString();
 
-    const tokenResp = await fetch("https://api.pinterest.com/v5/oauth/token", {
+    const resp = await fetch("https://api.pinterest.com/v5/oauth/token", {
       method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      headers: {
+        "Authorization": `Basic ${basic}`,
+        "Content-Type": "application/x-www-form-urlencoded",
+      },
       body,
     });
 
-    const tokenData = await tokenResp.json();
+    const data = await resp.json();
 
-    if (!tokenResp.ok) {
-      // Surface Pinterest’s error so we can see what it didn’t like
-      return res.status(tokenResp.status).json({ ok: false, error: tokenData });
+    if (!resp.ok) {
+      return res.status(resp.status).json({ ok: false, error: data });
     }
 
-    // Success! For now just show the token JSON.
-    // Next step will be saving it (cookie/DB) and redirecting back to the app UI.
-    return res.status(200).json({ ok: true, token: tokenData });
-  } catch (err: any) {
-    console.error("Pinterest callback error:", err);
-    return res
-      .status(500)
-      .json({ ok: false, error: err?.message || "Unknown error" });
+    // Success: show token so we can confirm it works
+    return res.status(200).json({ ok: true, token: data });
+  } catch (e: any) {
+    return res.status(500).json({ ok: false, error: e?.message || "Unknown error" });
   }
 }
