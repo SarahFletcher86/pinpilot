@@ -1,61 +1,62 @@
-// /api/auth/callback.ts
+import { createClient } from "@supabase/supabase-js";
+
+const supabase = createClient(
+  process.env.SUPABASE_URL as string,
+  process.env.SUPABASE_SERVICE_ROLE as string
+);
+
 export default async function handler(req: any, res: any) {
   try {
     const clientId = process.env.PINTEREST_CLIENT_ID!;
     const clientSecret = process.env.PINTEREST_CLIENT_SECRET!;
     const redirectUri = process.env.PINTEREST_REDIRECT_URI!;
 
-    if (!clientId || !clientSecret || !redirectUri) {
-      return res.status(500).json({
-        ok: false,
-        error:
-          "Missing env vars. Set PINTEREST_CLIENT_ID, PINTEREST_CLIENT_SECRET, PINTEREST_REDIRECT_URI.",
-      });
-    }
+    const code = req.query?.code as string | undefined;
+    if (!code) return res.status(400).json({ ok: false, error: "Missing code" });
 
-    const code = (req.query?.code as string) || "";
-    const returnedState = (req.query?.state as string) || "";
-    if (!code) {
-      return res.status(400).json({ ok: false, error: "Missing ?code" });
-    }
-
-    // best-effort state check (don’t block testing)
-    const cookieHeader = req.headers.cookie || "";
-    const savedState = cookieHeader
-      .split(";")
-      .map((c) => c.trim())
-      .find((c) => c.startsWith("pp_oauth_state="))
-      ?.split("=")[1];
-    if (savedState && returnedState && savedState !== returnedState) {
-      console.warn("OAuth state mismatch (continuing for testing).");
-    }
-
-    // --- Pinterest token exchange (use Basic auth + x-www-form-urlencoded body) ---
-    const basic = Buffer.from(`${clientId}:${clientSecret}`).toString("base64");
-    const body = new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: redirectUri, // must EXACTLY match the one in the Pinterest app settings
-    }).toString();
-
-    const resp = await fetch("https://api.pinterest.com/v5/oauth/token", {
+    const tokenResp = await fetch("https://api.pinterest.com/v5/oauth/token", {
       method: "POST",
-      headers: {
-        "Authorization": `Basic ${basic}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
-      body,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
     });
 
-    const data = await resp.json();
+    const tokenData = await tokenResp.json();
+    if (!tokenResp.ok) return res.status(tokenResp.status).json({ ok: false, error: tokenData });
 
-    if (!resp.ok) {
-      return res.status(resp.status).json({ ok: false, error: data });
-    }
+    const accessToken = tokenData.access_token as string;
+    const refreshToken = tokenData.refresh_token as string | undefined;
+    const expiresIn = tokenData.expires_in as number | undefined;
 
-    // Success: show token so we can confirm it works
-    return res.status(200).json({ ok: true, token: data });
-  } catch (e: any) {
-    return res.status(500).json({ ok: false, error: e?.message || "Unknown error" });
+    // Who is the user?
+    const meResp = await fetch("https://api.pinterest.com/v5/user_account", {
+      headers: { Authorization: `Bearer ${accessToken}` },
+    });
+    const me = await meResp.json();
+    const pinterestUserId = me?.username || me?.id || null;
+
+    await supabase.from("users").upsert(
+      {
+        pinterest_user_id: pinterestUserId,
+        plan: "free",
+        pinterest_access_token: accessToken,
+        pinterest_refresh_token: refreshToken || null,
+        token_expires_at: expiresIn ? new Date(Date.now() + expiresIn * 1000).toISOString() : null,
+      },
+      { onConflict: "pinterest_user_id" }
+    );
+
+    // short-lived cookie so we can call the API
+    res.setHeader("Set-Cookie", [`pp_at=${accessToken}; Path=/; HttpOnly; SameSite=Lax; Max-Age=3600; Secure`]);
+
+    res.writeHead(302, { Location: "/?connected=1" });
+    res.end();
+  } catch (err: any) {
+    res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
   }
 }
