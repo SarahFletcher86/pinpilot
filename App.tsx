@@ -1,4 +1,4 @@
-// App.tsx — Pin Pilot demo UI for Pinterest review
+// App.tsx — Pin Pilot (clean, no Tailwind required)
 import React from "react";
 
 export default function App() {
@@ -10,7 +10,7 @@ export default function App() {
           <img src="/logo.svg" alt="Pin Pilot logo" className="pp-logo" />
           <h1 className="pp-title">Pin Pilot</h1>
         </div>
-        <p className="text-emerald-400 font-semibold mt-1">Pin Better. Grow Faster.</p>
+        <p className="pp-tagline">Pin Better. Grow Faster.</p>
       </header>
 
       {/* Notice */}
@@ -21,8 +21,8 @@ export default function App() {
         </p>
         <div className="actions">
           {/* Hidden for now while we wait for Pinterest upgrade */}
-          {/* <a className="pp-btn primary" href="/plans">Enable Pro</a> */}
-          {/* <a className="pp-btn ghost" href="/plans">See plans</a> */}
+          {/* <a className="pp-btn primary" href="/plans">Enable Pro</a>
+          <a className="pp-btn ghost" href="/plans">See plans</a> */}
         </div>
       </section>
 
