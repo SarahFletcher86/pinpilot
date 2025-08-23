@@ -1,149 +1,201 @@
-// Handles Pinterest redirect back to your app and exchanges code for a token
-// Path: /api/auth/callback  (Node runtime)
+// /api/auth/callback.ts
+// Handles Pinterest redirect → exchanges code → saves tokens to Supabase
 
-import { supabase } from "../_supabase";
+import type { VercelRequest, VercelResponse } from "@vercel/node";
+import { createClient } from "@supabase/supabase-js";
 
-export default async function handler(req: any, res: any) {
+function html(body: string) {
+  return `<!doctype html><meta charset="utf-8" />
+  <style>body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:32px;line-height:1.4}
+  code{background:#f4f4f5;padding:2px 6px;border-radius:6px}</style>
+  ${body}`;
+}
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    const clientId = process.env.PINTEREST_CLIENT_ID!;
-    const clientSecret = process.env.PINTEREST_CLIENT_SECRET!;
-    const redirectUri = process.env.PINTEREST_REDIRECT_URI!;
+    // --- Env needed on the server ---
+    const {
+      PINTEREST_CLIENT_ID,
+      PINTEREST_CLIENT_SECRET,
+      PINTEREST_REDIRECT_URI,
+      SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE,
+    } = process.env;
 
-    if (!clientId || !clientSecret || !redirectUri) {
-      res.status(500).json({ ok: false, error: "Missing Pinterest env vars" });
+    if (
+      !PINTEREST_CLIENT_ID ||
+      !PINTEREST_CLIENT_SECRET ||
+      !PINTEREST_REDIRECT_URI ||
+      !SUPABASE_URL ||
+      !SUPABASE_SERVICE_ROLE
+    ) {
+      res
+        .status(500)
+        .send(
+          html(
+            `<h1>Setup error</h1><p>Missing one or more server env vars.
+            Make sure these exist in Vercel:</p>
+            <ul>
+              <li><code>PINTEREST_CLIENT_ID</code></li>
+              <li><code>PINTEREST_CLIENT_SECRET</code></li>
+              <li><code>PINTEREST_REDIRECT_URI</code></li>
+              <li><code>SUPABASE_URL</code></li>
+              <li><code>SUPABASE_SERVICE_ROLE</code></li>
+            </ul>`
+          )
+        );
       return;
     }
 
-    // 1) Read code/state returned by Pinterest
+    // --- Required query param from Pinterest ---
     const code = (req.query?.code as string) || "";
     const returnedState = (req.query?.state as string) || "";
 
     if (!code) {
-      res.status(400).json({ ok: false, error: "Missing ?code in callback URL" });
+      res
+        .status(400)
+        .send(
+          html(
+            `<h1>Missing code</h1><p>Pinterest did not send an authorization <code>code</code>.</p>`
+          )
+        );
       return;
     }
 
-    // (best-effort) CSRF check: compare with cookie we set in /api/auth/start
-    const cookieHeader = req.headers.cookie || "";
-    const stateCookie = cookieHeader
-      .split(";")
-      .map((c) => c.trim())
-      .find((c) => c.startsWith("pp_oauth_state="));
-    const savedState = stateCookie?.split("=")[1];
-
-    if (savedState && returnedState && savedState !== returnedState) {
-      res.status(400).json({ ok: false, error: "State mismatch" });
-      return;
+    // --- Best-effort CSRF check (don’t block if cookie missing while testing) ---
+    try {
+      const cookieHeader = req.headers.cookie || "";
+      const stateCookie = cookieHeader
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("pp_oauth_state="));
+      const savedState = stateCookie?.split("=")[1];
+      if (savedState && returnedState && savedState !== returnedState) {
+        res.status(400).send(html(`<h1>State mismatch</h1>`));
+        return;
+      }
+    } catch {
+      // ignore during testing
     }
 
-    // 2) Exchange code for tokens
+    // --- Exchange code for token ---
     const tokenResp = await fetch("https://api.pinterest.com/v5/oauth/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         grant_type: "authorization_code",
         code,
-        redirect_uri: redirectUri,
-        client_id: clientId,
-        client_secret: clientSecret,
+        redirect_uri: PINTEREST_REDIRECT_URI,
+        client_id: PINTEREST_CLIENT_ID,
+        client_secret: PINTEREST_CLIENT_SECRET,
       }),
     });
 
-    const tokenData = await tokenResp.json();
+    const tokenData = (await tokenResp.json()) as any;
+
     if (!tokenResp.ok) {
-      res.status(tokenResp.status).json({ ok: false, error: tokenData });
+      res
+        .status(tokenResp.status)
+        .send(
+          html(
+            `<h1>Pinterest token error</h1><pre>${JSON.stringify(
+              tokenData,
+              null,
+              2
+            )}</pre>`
+          )
+        );
       return;
     }
 
     const accessToken = tokenData.access_token as string;
-    const refreshToken = tokenData.refresh_token as string | undefined;
-    const expiresIn = Number(tokenData.expires_in ?? 0);
+    const refreshToken = (tokenData.refresh_token as string) || "";
+    const expiresIn = (tokenData.expires_in as number) || 3600;
 
-    // 3) Fetch the user account so we can store a stable id
-    const meResp = await fetch("https://api.pinterest.com/v5/user_account", {
+    // --- Fetch Pinterest user account (to get a stable id) ---
+    const acctResp = await fetch("https://api.pinterest.com/v5/user_account", {
       headers: { Authorization: `Bearer ${accessToken}` },
     });
-    const me = await meResp.json();
-    if (!meResp.ok) {
-      res.status(meResp.status).json({ ok: false, error: me });
+    const account = (await acctResp.json()) as any;
+
+    if (!acctResp.ok) {
+      res
+        .status(acctResp.status)
+        .send(
+          html(
+            `<h1>Pinterest account error</h1><pre>${JSON.stringify(
+              account,
+              null,
+              2
+            )}</pre>`
+          )
+        );
       return;
     }
 
-    const pinterest_user_id =
-      (me.id as string) ||
-      (me.username as string) ||
-      (me?.profile?.id as string) ||
+    const pinterestUserId =
+      (account.id as string) ||
+      (account.username as string) ||
+      (account.user_id as string) ||
       "";
 
-    // 4) Upsert into Supabase (by pinterest_user_id)
-    const expiresAtIso =
-      expiresIn > 0 ? new Date(Date.now() + expiresIn * 1000).toISOString() : null;
-
-    // Check if exists
-    const { data: existing, error: findErr } = await supabase
-      .from("users")
-      .select("id")
-      .eq("pinterest_user_id", pinterest_user_id)
-      .limit(1)
-      .maybeSingle();
-
-    if (findErr) {
-      res.status(500).json({ ok: false, error: findErr.message });
+    if (!pinterestUserId) {
+      res
+        .status(500)
+        .send(
+          html(
+            `<h1>Could not determine Pinterest user id</h1><pre>${JSON.stringify(
+              account,
+              null,
+              2
+            )}</pre>`
+          )
+        );
       return;
     }
 
-    if (existing?.id) {
-      const { error: updErr } = await supabase
-        .from("users")
-        .update({
-          pinterest_access_token: accessToken,
-          pinterest_refresh_token: refreshToken ?? null,
-          token_expires_at: expiresAtIso,
-        })
-        .eq("id", existing.id);
+    // --- Save to Supabase (upsert by pinterest_user_id) ---
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE);
 
-      if (updErr) {
-        res.status(500).json({ ok: false, error: updErr.message });
-        return;
-      }
-    } else {
-      const { error: insErr } = await supabase.from("users").insert({
-        email: null, // Pinterest trial doesn’t provide email
-        plan: "free",
-        pinterest_user_id,
+    const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000).toISOString();
+
+    // Ensure you created a unique index:
+    // CREATE UNIQUE INDEX IF NOT EXISTS users_pu_idx ON users(pinterest_user_id);
+    const { error } = await supabase.from("users").upsert(
+      {
+        pinterest_user_id: pinterestUserId,
         pinterest_access_token: accessToken,
-        pinterest_refresh_token: refreshToken ?? null,
-        token_expires_at: expiresAtIso,
-      });
-      if (insErr) {
-        res.status(500).json({ ok: false, error: insErr.message });
-        return;
-      }
+        pinterest_refresh_token: refreshToken,
+        token_expires_at: tokenExpiresAt,
+      },
+      { onConflict: "pinterest_user_id" }
+    );
+
+    if (error) {
+      res
+        .status(500)
+        .send(
+          html(
+            `<h1>Supabase error</h1><pre>${JSON.stringify(error, null, 2)}</pre>`
+          )
+        );
+      return;
     }
 
-    // 5) Show a simple success page
-    res.setHeader("Content-Type", "text/html; charset=utf-8");
-    res.status(200).send(`
-      <!doctype html>
-      <html>
-        <head><meta name="viewport" content="width=device-width, initial-scale=1" />
-          <title>Pinterest Connected</title>
-          <style>
-            body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;padding:40px;background:#f8fafc;color:#0f172a}
-            .card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;max-width:520px;padding:24px}
-            .btn{display:inline-block;margin-top:14px;padding:10px 14px;border-radius:10px;border:1px solid #cbd5e1;text-decoration:none}
-          </style>
-        </head>
-        <body>
-          <div class="card">
-            <h2>✅ Pinterest connected</h2>
-            <p>Your Pin Pilot account is now linked.</p>
-            <a class="btn" href="/">Back to app</a>
-          </div>
-        </body>
-      </html>
-    `);
+    // --- Success page ---
+    res
+      .status(200)
+      .send(
+        html(
+          `<h1>Connected ✅</h1>
+           <p>Your Pinterest account is linked.</p>
+           <p><strong>User:</strong> <code>${pinterestUserId}</code></p>
+           <p><a href="/">Return to Pin Pilot</a></p>`
+        )
+      );
   } catch (err: any) {
-    res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
+    res
+      .status(500)
+      .send(html(`<h1>Callback failed</h1><pre>${err?.message || err}</pre>`));
   }
 }
