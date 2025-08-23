@@ -1,77 +1,67 @@
-// Handles Pinterest redirect back to your app and exchanges ?code for an access token
+// Handles Pinterest redirect back to your app and exchanges code for a token
 // Path: /api/auth/callback
 
 export default async function handler(req: any, res: any) {
   try {
-    const clientId = process.env.PINTEREST_CLIENT_ID;
-    const clientSecret = process.env.PINTEREST_CLIENT_SECRET;
-    const redirectUri = process.env.PINTEREST_REDIRECT_URI;
+    const clientId = process.env.PINTEREST_CLIENT_ID!;
+    const clientSecret = process.env.PINTEREST_CLIENT_SECRET!;
+    const redirectUri = process.env.PINTEREST_REDIRECT_URI!;
 
-    if (!clientId || !clientSecret || !redirectUri) {
-      res.status(500).json({
-        ok: false,
-        error:
-          "Missing env vars. Set PINTEREST_CLIENT_ID, PINTEREST_CLIENT_SECRET, PINTEREST_REDIRECT_URI.",
-      });
-      return;
-    }
-
-    // --- Read query params from Pinterest redirect
+    // 1) Require code
     const code = (req.query?.code as string) || "";
-    const returnedState = (req.query?.state as string) || "";
-
     if (!code) {
       res.status(400).json({ ok: false, error: "Missing ?code in callback URL" });
       return;
     }
 
-    // --- Optional: verify CSRF state from our cookie (best-effort in testing)
-    const cookieHeader = req.headers.cookie || "";
-    const stateCookie = cookieHeader
-      .split(";")
-      .map((c) => c.trim())
-      .find((c) => c.startsWith("pp_oauth_state="));
-    const savedState = stateCookie?.split("=")[1];
-
-    if (savedState && returnedState && savedState !== returnedState) {
-      res.status(400).json({ ok: false, error: "State mismatch" });
-      return;
+    // 2) (Soft) state check – log but don't block during testing
+    try {
+      const cookieHeader = req.headers.cookie || "";
+      const stateCookie = cookieHeader
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("pp_oauth_state="));
+      const savedState = stateCookie?.split("=")[1];
+      const returnedState = req.query?.state as string | undefined;
+      if (savedState && returnedState && savedState !== returnedState) {
+        console.warn("Pinterest OAuth: state mismatch (continuing for testing)");
+      }
+    } catch (_) {
+      // ignore during testing
     }
 
-    // --- Exchange code for token (Pinterest requires x-www-form-urlencoded)
-    const body = new URLSearchParams({
-      grant_type: "authorization_code",
-      code, // must be the exact code Pinterest sent
-      redirect_uri: redirectUri, // must match your Pinterest app redirect setting
-      client_id: clientId,
-      client_secret: clientSecret,
-    }).toString();
-
+    // 3) Exchange code → token
     const tokenResp = await fetch("https://api.pinterest.com/v5/oauth/token", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        Accept: "application/json",
-      },
-      body,
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "authorization_code",
+        code,
+        redirect_uri: redirectUri,
+        client_id: clientId,
+        client_secret: clientSecret,
+      }),
     });
 
-    // Try to parse JSON either way to reveal any useful error
-    let tokenData: any = null;
-    try {
-      tokenData = await tokenResp.json();
-    } catch {
-      tokenData = { raw: await tokenResp.text() };
-    }
-
+    const tokenData = await tokenResp.json();
     if (!tokenResp.ok) {
       res.status(tokenResp.status).json({ ok: false, error: tokenData });
       return;
     }
 
-    // For now: show token JSON so we can confirm success.
-    // Next step will be to store this (cookie/session/DB) and redirect back to the app.
-    res.status(200).json({ ok: true, token: tokenData });
+    // 4) Save the token for 1 day (okay for testing)
+    const oneDay = 60 * 60 * 24;
+    res.setHeader(
+      "Set-Cookie",
+      [
+        `pp_access=${encodeURIComponent(tokenData.access_token)}; Max-Age=${oneDay}; Path=/; SameSite=Lax; Secure`,
+        "pp_oauth_state=; Max-Age=0; Path=/; SameSite=Lax; Secure", // clear state
+      ].join(", ")
+    );
+
+    // 5) Redirect back to app
+    res.writeHead(302, { Location: "/" });
+    res.end();
   } catch (err: any) {
     res.status(500).json({ ok: false, error: err?.message || "Unknown error" });
   }

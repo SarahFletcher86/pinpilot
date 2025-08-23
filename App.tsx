@@ -43,6 +43,22 @@ export default function App() {
     >
       Connect
     </button>
+
+<button
+  className="pp-btn ghost"
+  style={{ marginLeft: 12 }}
+  onClick={async () => {
+    const r = await fetch("/api/auth/me");
+    const j = await r.json();
+    if (j.ok && j.connected) {
+      alert(`Connected as ${j.user?.username || "Pinterest user"} 🎉`);
+    } else {
+      alert("Not connected yet.");
+    }
+  }}
+>
+  Check connection
+</button>
   </div>
 </article>
 
