@@ -1,102 +1,42 @@
-// /api/auth/callback.ts
-// Exchanges Pinterest ?code for an access token and shows the result.
-// No DB required yet — this is just to prove the OAuth flow works end-to-end.
+import type { VercelRequest, VercelResponse } from '@vercel/node';
+import fetch from 'node-fetch';
+import { createClient } from '@supabase/supabase-js';
 
-export default async function handler(req: any, res: any) {
+const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE!);
+
+export default async function handler(req: VercelRequest, res: VercelResponse) {
+  const { code, state } = req.query;
+  if (!code) return res.status(400).send("Missing code");
+
   try {
-    const clientId = process.env.PINTEREST_CLIENT_ID;
-    const clientSecret = process.env.PINTEREST_CLIENT_SECRET;
-    const redirectUri = process.env.PINTEREST_REDIRECT_URI;
-
-    if (!clientId || !clientSecret || !redirectUri) {
-      res
-        .status(500)
-        .json({ ok: false, error: "Missing env vars (CLIENT_ID/SECRET/REDIRECT_URI)" });
-      return;
-    }
-
-    // Query params from Pinterest redirect
-    const code = (req.query?.code as string) || "";
-    const returnedState = (req.query?.state as string) || "";
-
-    if (!code) {
-      res.status(400).json({ ok: false, error: "Missing ?code in callback URL" });
-      return;
-    }
-
-    // Best-effort CSRF check: compare cookie state (if present)
-    const cookieHeader = req.headers.cookie || "";
-    const stateCookie = cookieHeader
-      .split(";")
-      .map((c: string) => c.trim())
-      .find((c: string) => c.startsWith("pp_oauth_state="));
-    const savedState = stateCookie?.split("=")[1];
-
-    if (savedState && returnedState && savedState !== returnedState) {
-      res.status(400).json({ ok: false, error: "State mismatch" });
-      return;
-    }
-
-    // --- IMPORTANT FIX: send urlencoded body, NOT JSON ---
-    const body = new URLSearchParams({
-      grant_type: "authorization_code",
-      code,
-      redirect_uri: redirectUri,
-      client_id: clientId,
-      client_secret: clientSecret,
+    const tokenRes = await fetch('https://api.pinterest.com/v5/oauth/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        grant_type: 'authorization_code',
+        code: code as string,
+        redirect_uri: process.env.PINTEREST_REDIRECT_URI!,
+        client_id: process.env.PINTEREST_CLIENT_ID!,
+        client_secret: process.env.PINTEREST_CLIENT_SECRET!,
+      })
     });
 
-    const tokenResp = await fetch("https://api.pinterest.com/v5/oauth/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body,
-    });
+    const data = await tokenRes.json();
+    if (!tokenRes.ok) throw new Error(data.message || 'OAuth failed');
 
-    const tokenData = await tokenResp.json().catch(() => ({}));
+    // Save into Supabase
+    const email = state; // you can pass email in `state` param
+    await supabase
+      .from('users')
+      .update({
+        pinterest_access_token: data.access_token,
+        pinterest_refresh_token: data.refresh_token,
+        token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString()
+      })
+      .eq('email', email);
 
-    if (!tokenResp.ok) {
-      // Show Pinterest's error payload so we can see exactly what's wrong
-      res
-        .status(tokenResp.status)
-        .send(
-          `<h1>Pinterest token error</h1><pre>${escapeHtml(
-            JSON.stringify(tokenData, null, 2)
-          )}</pre>`
-        );
-      return;
-    }
-
-    // (Optional) set a short-lived cookie so we can hit other endpoints in the same session
-    // This is just for quick manual testing.
-    const minutes = 15;
-    res.setHeader(
-      "Set-Cookie",
-      `pp_access_token=${tokenData.access_token}; Max-Age=${minutes * 60}; Path=/; HttpOnly; SameSite=Lax; Secure`
-    );
-
-    // Success page with a tiny summary
-    res
-      .status(200)
-      .send(
-        `<h1>Pinterest connected ✅</h1>
-         <p>Access token received. You can close this tab and go back to the app.</p>
-         <details><summary>See raw response</summary><pre>${escapeHtml(
-           JSON.stringify(tokenData, null, 2)
-         )}</pre></details>`
-      );
+    res.redirect(`${process.env.APP_BASE_URL}/?connected=1`);
   } catch (err: any) {
-    res.status(500).send(
-      `<h1>Callback error</h1><pre>${escapeHtml(String(err?.message || err))}</pre>`
-    );
+    res.status(500).json({ error: err.message });
   }
-}
-
-// Small helper to keep the HTML safe
-function escapeHtml(s: string) {
-  return s
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#039;");
 }

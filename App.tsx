@@ -1,111 +1,174 @@
-// App.tsx — Pin Pilot (clean, no Tailwind required)
-import React from "react";
+import React, { useState, useEffect, useCallback } from 'react';
+import { PinData, PinterestBoard, BrandingOptions, SchedulePinPayload } from './types';
+import { generatePinContent } from './services/geminiService';
+import { fetchBoards, createPin } from './services/pinterestService';
+import ConnectPinterest from './components/ConnectPinterest';
+import ScheduleForm from './components/ScheduleForm';
+import PinResultCard from './components/PinResultCard';
+import MediaUploader from './components/ImageUploader';
+import BrandingControls from './components/BrandingControls';
+import DesignPreview from './components/DesignPreview';
+import LoadingSpinner from './components/LoadingSpinner';
+import { LogoIcon, SparklesIcon, ErrorIcon, PinterestIcon, CheckCircleIcon, RefreshIcon } from './components/Icons';
 
-export default function App() {
+// Default branding
+const initialBranding: BrandingOptions = {
+  overlayText: 'Your Catchy Title Here',
+  colors: { text: '#FFFFFF', accent: '#000000' },
+  font: 'Poppins',
+  logo: null,
+  template: 'standard',
+};
+
+function App() {
+  // Pro flag (from URL)
+  const isPro = new URLSearchParams(window.location.search).get('pro') === '1';
+
+  // Core state
+  const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
+  const [frameForAI, setFrameForAI] = useState<string | null>(null);
+  const [designedImageBase64, setDesignedImageBase64] = useState<string | null>(null);
+
+  // Workflow state
+  const [currentStep, setCurrentStep] = useState(1);
+  const [generatedPin, setGeneratedPin] = useState<PinData | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Pinterest state
+  const [pinterestToken, setPinterestToken] = useState<string | null>(localStorage.getItem('pinterestAccessToken'));
+  const [userBoards, setUserBoards] = useState<PinterestBoard[]>([]);
+  const [isFetchingBoards, setIsFetchingBoards] = useState(false);
+  const [fetchBoardsError, setFetchBoardsError] = useState<string | null>(null);
+
+  // Branding
+  const [brandingOptions, setBrandingOptions] = useState<BrandingOptions>(() => {
+    const saved = localStorage.getItem('brandingOptions');
+    return saved ? JSON.parse(saved) : initialBranding;
+  });
+
+  // Reset
+  const resetAll = () => {
+    setMediaFile(null);
+    setMediaPreviewUrl(null);
+    setFrameForAI(null);
+    setDesignedImageBase64(null);
+    setGeneratedPin(null);
+    setError(null);
+    setCurrentStep(1);
+  };
+
+  // Media upload
+  const handleMediaUpload = useCallback((file: File) => {
+    resetAll();
+    setMediaFile(file);
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result as string;
+      setMediaPreviewUrl(result);
+      setFrameForAI(result);
+      setCurrentStep(2);
+    };
+    reader.readAsDataURL(file);
+  }, []);
+
+  // Generate pin
+  const handleGeneratePin = async () => {
+    if (!designedImageBase64) return setError("Please finalize your design first.");
+    setIsLoading(true);
+    try {
+      const base64Data = designedImageBase64.split(',')[1];
+      const result = await generatePinContent(base64Data, 'image/jpeg', 'DIY, Fashion');
+      setGeneratedPin(result);
+      setCurrentStep(3);
+    } catch (err: any) {
+      setError(err.message || 'Failed to generate content.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch boards
+  const handleFetchBoards = async () => {
+    if (!pinterestToken) return;
+    setIsFetchingBoards(true);
+    try {
+      const boards = await fetchBoards(pinterestToken);
+      setUserBoards(boards);
+    } catch (err: any) {
+      setFetchBoardsError(err.message);
+    } finally {
+      setIsFetchingBoards(false);
+    }
+  };
+
   return (
-    <main className="pp-wrap">
-      {/* Header */}
-      <header className="pp-header">
-        <div className="logo-row">
-          <img src="/logo.svg" alt="Pin Pilot logo" className="pp-logo" />
-          <h1 className="pp-title">Pin Pilot</h1>
+    <div className="min-h-screen bg-slate-100 text-slate-800 p-6">
+      <header className="flex justify-between items-center mb-6">
+        <div className="flex items-center space-x-3">
+          <LogoIcon className="h-10 w-10" />
+          <h1 className="text-3xl font-bold">Pin Pilot</h1>
         </div>
-        <p className="pp-tagline">Pin Better. Grow Faster.</p>
+        <button
+          onClick={resetAll}
+          className="px-4 py-2 bg-white border rounded-lg shadow-sm hover:bg-slate-50"
+        >
+          <RefreshIcon className="h-4 w-4 inline-block mr-2" /> Reset
+        </button>
       </header>
 
-      {/* Notice */}
-      <section className="notice">
-        <p>
-          You’re on the <strong>Free</strong> version. Pinterest connect and scheduling are
-          enabled in Pro after Pinterest upgrades our app access.
-        </p>
-        <div className="actions">
-          {/* Hidden for now while we wait for Pinterest upgrade */}
-          {/* <a className="pp-btn primary" href="/plans">Enable Pro</a>
-          <a className="pp-btn ghost" href="/plans">See plans</a> */}
+      {/* Step 1: Upload */}
+      {currentStep === 1 && (
+        <MediaUploader onMediaUpload={handleMediaUpload} onFrameCapture={() => {}} />
+      )}
+
+      {/* Step 2: Design */}
+      {currentStep === 2 && frameForAI && (
+        <>
+          <BrandingControls options={brandingOptions} setOptions={setBrandingOptions} />
+          <button
+            onClick={handleGeneratePin}
+            className="mt-4 w-full bg-slate-800 text-white py-2 rounded-lg"
+          >
+            <SparklesIcon className="h-5 w-5 inline mr-2" />
+            Generate Pin Content
+          </button>
+        </>
+      )}
+
+      {/* Step 3: Results */}
+      {currentStep === 3 && generatedPin && (
+        <div className="mt-6 bg-white p-4 rounded-lg shadow-md">
+          <h2 className="text-xl font-bold mb-3">Generated Pin</h2>
+          {isPro ? (
+            <>
+              <ConnectPinterest />
+              <ScheduleForm
+                userBoards={userBoards}
+                onFetchBoards={handleFetchBoards}
+                isFetchingBoards={isFetchingBoards}
+                error={fetchBoardsError}
+              />
+            </>
+          ) : (
+            <p className="text-sm text-slate-600">
+              Upgrade to Pro to unlock posting & scheduling.
+            </p>
+          )}
+          <PinResultCard
+            finalPinImageUrl={designedImageBase64}
+            pinData={generatedPin}
+            userBoards={userBoards}
+          />
         </div>
-      </section>
+      )}
 
-      {/* Feature cards */}
-      <section className="feature-grid">
-        {/* Connect Pinterest */}
-        <article className="pp-card">
-          <div className="pp-card-pad">
-            <h3 className="card-title">Connect Pinterest</h3>
-            <p className="card-copy">
-              Secure OAuth flow to fetch boards and (after approval) post on your behalf.
-            </p>
-
-            <button
-              className="pp-btn pp-btn-primary"
-              onClick={() => (window.location.href = "/api/auth/start")}
-            >
-              Connect
-            </button>
-
-            <div style={{ marginTop: 10 }}>
-              <button
-                className="pp-btn ghost"
-                onClick={async () => {
-                  try {
-                    const r = await fetch("/api/pinterest/boards");
-                    const j = await r.json();
-                    if (!j.ok) {
-                      alert("Pinterest API error: " + JSON.stringify(j.error));
-                      return;
-                    }
-                    const names = (j.boards || []).map((b: any) => b.name || b.id);
-                    alert(
-                      names.length ? `Boards:\n- ${names.join("\n- ")}` : "No boards returned."
-                    );
-                  } catch {
-                    alert("Failed to fetch boards.");
-                  }
-                }}
-              >
-                Test Pinterest (list boards)
-              </button>
-            </div>
-          </div>
-        </article>
-
-        {/* AI Assistant (placeholder) */}
-        <article className="pp-card">
-          <div className="pp-card-pad">
-            <h3 className="card-title">AI-Optimized Keywords & Descriptions</h3>
-            <p className="card-copy">Generate SEO-friendly titles, descriptions and tags.</p>
-            <button className="pp-btn ghost" disabled title="Coming soon">
-              Open AI Assistant
-            </button>
-          </div>
-        </article>
-
-        {/* Scheduler (placeholder) */}
-        <article className="pp-card">
-          <div className="pp-card-pad">
-            <h3 className="card-title">Smart Scheduler</h3>
-            <p className="card-copy">
-              Paste an image URL, choose a time — we’ll handle the rest (Pro after approval).
-            </p>
-            <button className="pp-btn ghost" disabled title="Pro after approval">
-              Open Scheduler
-            </button>
-          </div>
-        </article>
-
-        {/* Templates (placeholder) */}
-        <article className="pp-card">
-          <div className="pp-card-pad">
-            <h3 className="card-title">Pinterest-Ready Templates</h3>
-            <p className="card-copy">1000×1500 & 1000×1800 best-practice sizes.</p>
-            <button className="pp-btn ghost" disabled title="Coming soon">
-              Browse Templates
-            </button>
-          </div>
-        </article>
-      </section>
-
-      <footer className="pp-footer">© {new Date().getFullYear()} Pin Pilot</footer>
-    </main>
+      {error && (
+        <div className="mt-4 p-4 bg-red-100 text-red-600 rounded">{error}</div>
+      )}
+    </div>
   );
 }
+
+export default App;

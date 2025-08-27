@@ -1,56 +1,51 @@
-import { useState, useEffect } from 'react';
+import React from 'react';
+import LoadingSpinner from './LoadingSpinner';
+import { PinterestIcon } from './Icons';
 
-interface ScheduleFormProps {
-  selectedBoardId: string;
-}
+type Props = {
+  userBoards: { id: string; name: string }[];
+  onFetchBoards: () => void;
+  isFetchingBoards: boolean;
+  error: string | null;
+};
 
-export default function ScheduleForm({ selectedBoardId }: ScheduleFormProps) {
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [link, setLink] = useState('');
-  const [boardId, setBoardId] = useState(selectedBoardId);
-  const [mediaUrl, setMediaUrl] = useState('');
-  const [when, setWhen] = useState('');
-
-  useEffect(() => {
-    if (selectedBoardId) setBoardId(selectedBoardId);
-  }, [selectedBoardId]);
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    try {
-      const res = await fetch('/api/schedule', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          description,
-          link,
-          board_id: boardId,
-          media_url: mediaUrl,
-          scheduled_at: when,
-        }),
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        alert(`Failed: ${res.status} ${text}`);
-        return;
-      }
-      alert('Scheduled!');
-    } catch (err: any) {
-      alert(`Error: ${err?.message ?? err}`);
-    }
-  }
-
+const ScheduleForm: React.FC<Props> = ({ userBoards, onFetchBoards, isFetchingBoards, error }) => {
   return (
-    <form onSubmit={submit} className="pp-grid" style={{ maxWidth: 680 }}>
-      <input className="pp-input" placeholder="Board ID" value={boardId} readOnly />
-      <input className="pp-input" placeholder="Title" value={title} onChange={e=>setTitle(e.target.value)} />
-      <textarea className="pp-input" placeholder="Description" value={description} onChange={e=>setDescription(e.target.value)} />
-      <input className="pp-input" placeholder="Destination Link (optional)" value={link} onChange={e=>setLink(e.target.value)} />
-      <input className="pp-input" placeholder="Image URL" value={mediaUrl} onChange={e=>setMediaUrl(e.target.value)} />
-      <input className="pp-input" type="datetime-local" value={when} onChange={e=>setWhen(e.target.value)} />
-      <button className="pp-btn primary" type="submit">Schedule Pin</button>
-    </form>
+    <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 mt-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-slate-700">
+          {userBoards.length ? (
+            <>Boards connected: <strong>{userBoards.length}</strong></>
+          ) : (
+            <>No boards fetched yet.</>
+          )}
+        </div>
+
+        <button
+          onClick={onFetchBoards}
+          disabled={isFetchingBoards}
+          className="inline-flex items-center justify-center rounded-lg px-3 py-2 text-sm font-semibold text-white
+                     bg-slate-700 hover:bg-slate-800 disabled:opacity-50"
+        >
+          {isFetchingBoards ? (
+            <>
+              <LoadingSpinner className="h-4 w-4 mr-2 text-white" /> Fetching…
+            </>
+          ) : (
+            <>
+              <PinterestIcon className="h-4 w-4 mr-2" /> Fetch My Boards
+            </>
+          )}
+        </button>
+      </div>
+
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+
+      <p className="mt-3 text-xs text-slate-500">
+        Choose your board and use the Schedule box in the card below to set the date/time.
+      </p>
+    </div>
   );
-}
+};
+
+export default ScheduleForm;

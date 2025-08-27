@@ -1,203 +1,225 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState } from 'react';
 import { PinData, PinterestBoard } from '../types';
-import { TagIcon, PinterestIcon, ErrorIcon, CheckCircleIcon, ClipboardIcon, ClipboardCheckIcon } from './Icons';
 import LoadingSpinner from './LoadingSpinner';
+import { CheckCircleIcon, ErrorIcon, PinterestIcon, CalendarIcon } from './Icons';
 
-interface PinResultCardProps {
+type Props = {
+  // visuals
   finalPinImageUrl: string | null;
-  mediaPreviewUrl: string | null;
-  mediaType: 'image' | 'video' | null;
-  pinData: PinData;
-  userBoards: PinterestBoard[];
-  onPostPin: (boardId: string, title: string, description: string) => void;
-  isPosting: boolean;
-  postError: string | null;
-  postSuccess: string | null;
-  postingProgress: string | null;
-  isConnected: boolean;
-}
+  mediaPreviewUrl?: string | null;
+  mediaType?: 'image' | 'video' | null;
 
-const PinResultCard: React.FC<PinResultCardProps> = ({ 
+  // generated content
+  pinData: PinData;
+
+  // boards and actions
+  userBoards: PinterestBoard[];
+  onPostPin?: (boardId: string, title: string, description: string) => Promise<void>;
+  onSchedulePin?: (boardId: string, title: string, description: string, scheduledAt: string) => Promise<void>;
+
+  // action states
+  isPosting?: boolean;
+  postError?: string | null;
+  postSuccess?: string | null;
+  postingProgress?: string | null;
+
+  isScheduling?: boolean;
+  scheduleError?: string | null;
+  scheduleSuccess?: string | null;
+
+  // connection + gating
+  isConnected?: boolean;          // true when boards are fetched
+  isPro?: boolean;                // pro/founders plan
+  autoPostingEnabled?: boolean;   // feature flag (env)
+};
+
+const PinResultCard: React.FC<Props> = ({
   finalPinImageUrl,
   mediaPreviewUrl,
   mediaType,
-  pinData, 
-  userBoards, 
+  pinData,
+  userBoards,
   onPostPin,
-  isPosting,
+  onSchedulePin,
+  isPosting = false,
   postError,
   postSuccess,
   postingProgress,
-  isConnected
+  isScheduling = false,
+  scheduleError,
+  scheduleSuccess,
+  isConnected = false,
+  isPro = false,
+  autoPostingEnabled = false,
 }) => {
-  const [selectedBoardId, setSelectedBoardId] = useState<string>('');
-  const [editableTitle, setEditableTitle] = useState(pinData.title);
-  const [editableDescription, setEditableDescription] = useState(pinData.description);
-  const [copiedState, setCopiedState] = useState<{field: string | null, timerId: number | null}>({ field: null, timerId: null });
+  const [boardId, setBoardId] = useState<string>(userBoards[0]?.id || '');
+  const [title, setTitle] = useState<string>(pinData.title || '');
+  const [description, setDescription] = useState<string>(pinData.description || '');
+  const [scheduledAt, setScheduledAt] = useState<string>('');
 
-  useEffect(() => {
-    setEditableTitle(pinData.title);
-    setEditableDescription(pinData.description);
-    
-    const suggestedBoard = userBoards.find(b => b.name.toLowerCase() === pinData.board.toLowerCase());
-    if (suggestedBoard) {
-      setSelectedBoardId(suggestedBoard.id);
-    } else if (userBoards.length > 0) {
-      setSelectedBoardId(userBoards[0].id);
-    }
-  }, [pinData, userBoards]);
-  
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (copiedState.timerId) {
-        clearTimeout(copiedState.timerId);
-      }
-    };
-  }, [copiedState.timerId]);
+  const canPost = isPro && autoPostingEnabled && isConnected && !!onPostPin;
+  const canSchedule = isPro && autoPostingEnabled && isConnected && !!onSchedulePin;
 
-  const handleCopy = (text: string, fieldName: 'title' | 'description') => {
-    navigator.clipboard.writeText(text).then(() => {
-        if (copiedState.timerId) {
-            clearTimeout(copiedState.timerId);
-        }
-        const newTimerId = window.setTimeout(() => {
-            setCopiedState({ field: null, timerId: null });
-        }, 2000);
-        setCopiedState({ field: fieldName, timerId: newTimerId });
-    }).catch(err => {
-        console.error('Failed to copy: ', err);
-    });
-  };
-
-  const handlePostClick = () => {
-    if (selectedBoardId) {
-        onPostPin(selectedBoardId, editableTitle, editableDescription);
-    }
-  }
+  const previewSrc = useMemo(() => {
+    if (finalPinImageUrl) return finalPinImageUrl;
+    if (mediaType === 'image') return mediaPreviewUrl || '';
+    return ''; // videos are uploaded at post-time
+  }, [finalPinImageUrl, mediaPreviewUrl, mediaType]);
 
   return (
-    <div className="w-full max-w-sm mx-auto bg-white rounded-2xl shadow-lg overflow-hidden transition-all duration-500 ease-in-out animate-fade-in">
-      <div className="bg-slate-200">
-        {mediaType === 'image' && finalPinImageUrl && (
-          <img src={finalPinImageUrl} alt="Generated Pin Preview" className="w-full h-auto object-cover" />
-        )}
-        {mediaType === 'video' && mediaPreviewUrl && (
-          <video src={mediaPreviewUrl} controls muted loop playsInline className="w-full h-auto object-cover" />
-        )}
+    <div className="w-full bg-white border border-slate-200 rounded-xl shadow p-4 space-y-4">
+      {/* Image preview */}
+      {previewSrc ? (
+        <img
+          src={previewSrc}
+          alt="Pin preview"
+          className="w-full aspect-square object-cover rounded-lg border"
+        />
+      ) : (
+        <div className="w-full aspect-square bg-slate-100 rounded-lg grid place-items-center text-slate-400">
+          No preview
+        </div>
+      )}
+
+      {/* Editable fields */}
+      <div className="space-y-3">
+        <label className="block">
+          <span className="text-xs font-semibold text-slate-600">Title</span>
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            placeholder="Enter a catchy title…"
+          />
+        </label>
+
+        <label className="block">
+          <span className="text-xs font-semibold text-slate-600">Description</span>
+          <textarea
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm h-24 resize-none focus:outline-none focus:ring-2 focus:ring-slate-500"
+            placeholder="Add a helpful description…"
+          />
+        </label>
+
+        {/* Boards */}
+        <label className="block">
+          <span className="text-xs font-semibold text-slate-600">Select Board</span>
+          <select
+            value={boardId}
+            onChange={(e) => setBoardId(e.target.value)}
+            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+          >
+            {userBoards.map((b) => (
+              <option key={b.id} value={b.id}>{b.name}</option>
+            ))}
+          </select>
+        </label>
       </div>
 
-      <div className="p-5">
-        <div className="mb-4">
-            <div className="flex justify-between items-center mb-1">
-                <label htmlFor="title" className="block text-xs font-medium text-slate-500">Title</label>
-                <button 
-                    onClick={() => handleCopy(editableTitle, 'title')} 
-                    title="Copy title" 
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-400 transition-colors"
-                >
-                    {copiedState.field === 'title' ? <ClipboardCheckIcon className="h-4 w-4 text-green-500" /> : <ClipboardIcon className="h-4 w-4" />}
-                </button>
-            </div>
-            <input 
-              id="title"
-              type="text"
-              value={editableTitle}
-              onChange={(e) => setEditableTitle(e.target.value)}
-              className="w-full font-bold text-xl text-slate-800 leading-tight border-b-2 border-transparent focus:border-slate-400 focus:outline-none bg-transparent p-0"
-            />
+      {/* Pro gate / status messaging */}
+      {!isPro && (
+        <div className="p-3 rounded-md bg-yellow-50 border border-yellow-200 text-yellow-800 text-sm">
+          Auto-posting & scheduling are <strong>Pro</strong> features. Upgrade to unlock.
         </div>
-        <div className="mb-4">
-             <div className="flex justify-between items-center mb-1">
-                <label htmlFor="description" className="block text-xs font-medium text-slate-500">Description</label>
-                <button 
-                    onClick={() => handleCopy(editableDescription, 'description')} 
-                    title="Copy description"
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-400 transition-colors"
-                >
-                    {copiedState.field === 'description' ? <ClipboardCheckIcon className="h-4 w-4 text-green-500" /> : <ClipboardIcon className="h-4 w-4" />}
-                </button>
-            </div>
-            <textarea 
-              id="description"
-              value={editableDescription}
-              onChange={(e) => setEditableDescription(e.target.value)}
-              rows={4}
-              className="w-full text-slate-600 text-sm border-b-2 border-transparent focus:border-slate-400 focus:outline-none bg-transparent p-0 resize-none"
-            />
-        </div>
-        <div className="mb-4">
-            <p className="block text-xs font-medium text-slate-500 mb-1">Tags</p>
-            <div className="flex flex-wrap gap-2">
-                {pinData.tags.map((tag, index) => (
-                    <span key={index} className="flex items-center bg-slate-100 text-slate-700 text-xs font-medium px-2.5 py-1 rounded-full">
-                        <TagIcon className="h-3 w-3 mr-1 text-slate-500" />
-                        {tag}
-                    </span>
-                ))}
-            </div>
-        </div>
+      )}
 
-        {isConnected && (
-            <div className="mt-6 border-t pt-4">
-                <label htmlFor="board-select" className="block text-sm font-medium text-slate-700 mb-2">
-                    Post to Board
-                </label>
-                 <select
-                    id="board-select"
-                    value={selectedBoardId}
-                    onChange={(e) => setSelectedBoardId(e.target.value)}
-                    className="w-full p-2 border border-slate-300 rounded-lg shadow-sm focus:ring-slate-500 focus:border-slate-500"
-                >
-                    <option value="" disabled>Select a board...</option>
-                    {userBoards.map((board) => (
-                        <option key={board.id} value={board.id}>{board.name}</option>
-                    ))}
-                     <option value="" disabled>---</option>
-                    <option value="new_board" disabled>Suggested: "{pinData.board}" (Create manually)</option>
-                </select>
-                <button
-                    onClick={handlePostClick}
-                    disabled={isPosting || !selectedBoardId}
-                    className="mt-4 w-full bg-slate-800 text-white font-bold py-2.5 px-4 rounded-lg flex items-center justify-center transition-colors hover:bg-black disabled:bg-slate-400 disabled:cursor-not-allowed"
-                >
-                    {isPosting ? (
-                        <div className="flex items-center justify-center">
-                           <LoadingSpinner className="h-5 w-5 mr-3" />
-                           <span className="text-sm">{postingProgress || 'Posting...'}</span>
-                        </div>
-                    ) : (
-                        <><PinterestIcon className="h-5 w-5 mr-2" /> Post to Pinterest</>
-                    )}
-                </button>
-                {postSuccess && (
-                    <div className="mt-3 flex items-center text-sm text-green-700 bg-green-100 p-3 rounded-lg">
-                        <CheckCircleIcon className="h-5 w-5 mr-2"/> {postSuccess}
-                    </div>
-                )}
-                 {postError && (
-                    <div className="mt-3 flex items-center text-sm text-red-600 bg-red-100 p-3 rounded-lg">
-                        <ErrorIcon className="h-5 w-5 mr-2"/> {postError}
-                    </div>
-                )}
-            </div>
-        )}
+      {isPro && !autoPostingEnabled && (
+        <div className="p-3 rounded-md bg-blue-50 border border-blue-200 text-blue-800 text-sm">
+          Auto-posting unlocks automatically once our Pinterest app upgrade is approved.
+          You can still design and export now.
+        </div>
+      )}
+
+      {isPro && autoPostingEnabled && !isConnected && (
+        <div className="p-3 rounded-md bg-slate-50 border border-slate-200 text-slate-700 text-sm">
+          Connect Pinterest and fetch your boards to enable posting.
+        </div>
+      )}
+
+      {/* Actions */}
+      <div className="space-y-3">
+        {/* Post now */}
+        <button
+          disabled={!canPost || isPosting || !boardId || !title}
+          onClick={() => onPostPin && onPostPin(boardId, title, description)}
+          className="w-full inline-flex items-center justify-center rounded-lg px-4 py-2 font-semibold text-white
+                     disabled:opacity-50 disabled:cursor-not-allowed
+                     bg-red-600 hover:bg-red-700 transition"
+          title={!canPost ? 'Posting disabled' : 'Post to Pinterest'}
+        >
+          {isPosting ? (
+            <>
+              <LoadingSpinner className="h-5 w-5 mr-2 text-white" /> Posting…
+            </>
+          ) : (
+            <>
+              <PinterestIcon className="h-5 w-5 mr-2" /> Post to Pinterest
+            </>
+          )}
+        </button>
+
+        {/* Schedule */}
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-2 items-end">
+          <label className="block">
+            <span className="text-xs font-semibold text-slate-600">Schedule (local time)</span>
+            <input
+              type="datetime-local"
+              value={scheduledAt}
+              onChange={(e) => setScheduledAt(e.target.value)}
+              className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-500"
+            />
+          </label>
+          <button
+            disabled={!canSchedule || isScheduling || !boardId || !title || !scheduledAt}
+            onClick={() => onSchedulePin && onSchedulePin(boardId, title, description, scheduledAt)}
+            className="w-full sm:w-auto inline-flex items-center justify-center rounded-lg px-4 py-2 font-semibold text-white
+                       disabled:opacity-50 disabled:cursor-not-allowed
+                       bg-slate-800 hover:bg-black transition"
+            title={!canSchedule ? 'Scheduling disabled' : 'Schedule Pin'}
+          >
+            {isScheduling ? (
+              <>
+                <LoadingSpinner className="h-5 w-5 mr-2 text-white" /> Scheduling…
+              </>
+            ) : (
+              <>
+                <CalendarIcon className="h-5 w-5 mr-2" /> Schedule
+              </>
+            )}
+          </button>
+        </div>
       </div>
+
+      {/* Status + errors */}
+      {!!postingProgress && (
+        <div className="text-xs text-slate-600">{postingProgress}</div>
+      )}
+
+      {!!postSuccess && (
+        <div className="mt-2 text-green-700 bg-green-100 border border-green-200 p-3 rounded-md text-sm flex items-center">
+          <CheckCircleIcon className="h-5 w-5 mr-2" /> {postSuccess}
+        </div>
+      )}
+      {!!postError && (
+        <div className="mt-2 text-red-700 bg-red-100 border border-red-200 p-3 rounded-md text-sm flex items-center">
+          <ErrorIcon className="h-5 w-5 mr-2" /> {postError}
+        </div>
+      )}
+
+      {!!scheduleSuccess && (
+        <div className="mt-2 text-green-700 bg-green-100 border border-green-200 p-3 rounded-md text-sm flex items-center">
+          <CheckCircleIcon className="h-5 w-5 mr-2" /> {scheduleSuccess}
+        </div>
+      )}
+      {!!scheduleError && (
+        <div className="mt-2 text-red-700 bg-red-100 border border-red-200 p-3 rounded-md text-sm flex items-center">
+          <ErrorIcon className="h-5 w-5 mr-2" /> {scheduleError}
+        </div>
+      )}
     </div>
   );
 };
-
-// Add keyframes for animation in a style tag for simplicity in this setup
-const style = document.createElement('style');
-style.innerHTML = `
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(10px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-.animate-fade-in {
-  animation: fadeIn 0.5s ease-in-out;
-}
-`;
-document.head.appendChild(style);
 
 export default PinResultCard;
