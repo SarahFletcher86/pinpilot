@@ -1,33 +1,25 @@
-/* index.css */
-@import "tailwindcss";
-
-/* Optional: your brand tokens with v4's @theme */
-@theme {
-  --color-primary: #5459d4;
-  --color-accent:  #74d6d8;
-  --color-ink:     #1d1d1f;
-  --color-body:    #2f2f3a;
-  --color-bg:      #f5f6f7;
-
-  --radius-xl: 1rem;
-  --radius-2xl: 1.25rem;
-}
-
+/* index.css — polished, brand-first styling (no Tailwind required) */
 :root {
-  --bg: #f6f7fb;
-  --card: #ffffff;
-  --text: #111827;
-  --muted: #6b7280;
-  --primary: #635bff; /* button purple */
-  --border: #e5e7eb;
-  --aqua: #10b981;    /* tagline aqua */
+  /* Brand palette (tweak if you like) */
+  --bg:       #f6f7fb;   /* page background */
+  --card:     #ffffff;   /* card surface */
+  --text:     #111827;   /* main text */
+  --muted:    #6b7280;   /* secondary text */
+  --primary:  #635bff;   /* buttons / highlights (brand purple) */
+  --border:   #e5e7eb;   /* soft borders */
+  --aqua:     #10b981;   /* tagline accent (aqua) */
+
+  --radius: 16px;        /* card corners */
+  --shadow: 0 10px 25px rgba(17, 24, 39, 0.08);
 }
 
 * { box-sizing: border-box; }
-html, body, #app { height: 100%; }
+html, body, #root, #app { height: 100%; }
+
 body {
   margin: 0;
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans",
+               "Apple Color Emoji", "Segoe UI Emoji";
   color: var(--text);
   background:
     radial-gradient(1200px 400px at 20% -10%, #e9f7ff 0%, transparent 60%),
@@ -35,83 +27,188 @@ body {
     var(--bg);
 }
 
-/* Layout */
+/* ==== Layout shell ==== */
 .pp-wrap {
   max-width: 1100px;
   margin: 0 auto;
-  padding: 28px 16px 40px;
+  padding: 32px 20px 80px;
 }
 
-.pp-header .logo-row {
+/* ==== Header / Brand ==== */
+.pp-header {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
 }
+
+.pp-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
 .pp-logo {
   width: 44px;
   height: 44px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 6px rgba(99,91,255,0.25));
 }
+
 .pp-title {
-  margin: 0;
   font-size: 28px;
   line-height: 1.1;
+  font-weight: 800;
+  letter-spacing: -0.02em;
 }
+
 .pp-tagline {
-  margin: 6px 0 0 56px; /* align under title beside logo */
-  color: var(--aqua);
-  font-weight: 600;
-}
-
-/* Notice */
-.notice {
-  margin-top: 18px;
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 14px;
-  padding: 16px;
-  box-shadow: 0 6px 18px rgba(16,24,40,.06);
-}
-.notice .actions { margin-top: 10px; display: flex; gap: 8px; }
-
-/* Buttons */
-.pp-btn {
   font-size: 14px;
-  padding: 10px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--border);
-  background: var(--card);
-  cursor: pointer;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: var(--aqua);
+  white-space: nowrap;
 }
-.pp-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-.pp-btn-primary {
-  background: var(--primary);
-  color: white;
-  border-color: var(--primary);
-}
-.pp-btn.ghost { background: transparent; }
 
-/* Grid & cards */
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0,1fr));
-  gap: 16px;
-  margin-top: 18px;
-}
-@media (max-width: 820px) {
-  .feature-grid { grid-template-columns: 1fr; }
-}
+/* ==== Card ==== */
 .pp-card {
   background: var(--card);
   border: 1px solid var(--border);
-  border-radius: 16px;
-  box-shadow: 0 6px 18px rgba(16,24,40,.06);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 22px;
+  margin-top: 18px;
 }
-.pp-card-pad { padding: 16px; }
-.card-title { margin: 0 0 8px; font-size: 18px; }
-.card-copy { margin: 0 0 12px; color: var(--muted); }
 
-.pp-footer {
-  margin-top: 26px;
+.pp-card h2 {
+  margin: 0 0 12px;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+/* Groups / rows inside cards */
+.pp-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+}
+
+@media (min-width: 760px) {
+  .pp-row--2 { grid-template-columns: 1fr 1fr; }
+  .pp-row--3 { grid-template-columns: 1fr 1fr 1fr; }
+}
+
+/* ==== Inputs & controls ==== */
+.pp-input,
+.pp-select,
+.pp-textarea {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--text);
+  outline: none;
+  transition: box-shadow .2s, border-color .2s;
+}
+
+.pp-input::placeholder,
+.pp-textarea::placeholder { color: #9ca3af; }
+
+.pp-input:focus,
+.pp-select:focus,
+.pp-textarea:focus {
+  border-color: #c7d2fe;
+  box-shadow: 0 0 0 4px rgba(99,91,255,0.12);
+}
+
+.pp-label {
+  font-size: 12px;
+  font-weight: 700;
   color: var(--muted);
-  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 6px;
+  display: inline-block;
+}
+
+/* Color input wrapper so pasted hex looks tidy */
+.pp-color {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.pp-color input[type="color"] {
+  width: 40px; height: 40px; padding: 0; border: none; background: transparent;
+}
+.pp-color .pp-input {
+  flex: 1;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* ==== Buttons ==== */
+.pp-btn,
+.pp-btn-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px 16px;
+  border-radius: 12px;
+  font-weight: 700;
+  letter-spacing: .01em;
+  transition: transform .06s ease, filter .2s ease, background .2s ease, border-color .2s ease;
+  cursor: pointer;
+  user-select: none;
+  text-decoration: none;
+}
+
+.pp-btn {
+  background: var(--primary);
+  color: white;
+  border: 1px solid transparent;
+  box-shadow: 0 6px 14px rgba(99, 91, 255, .25);
+}
+.pp-btn:hover { filter: brightness(.98); transform: translateY(-1px); }
+.pp-btn:active { transform: translateY(0); }
+
+.pp-btn-secondary {
+  background: #f8fafc;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.pp-btn-secondary:hover { background: #f2f4f7; }
+
+/* Utility */
+.pp-center { display:flex; align-items:center; justify-content:center; }
+.pp-spread { display:flex; align-items:center; justify-content:space-between; gap:14px; }
+
+/* ==== Feedback ==== */
+.pp-error {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #fecaca;
+  background: #fff1f2;
+  color: #991b1b;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+.pp-success {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid #bbf7d0;
+  background: #ecfdf5;
+  color: #065f46;
+  border-radius: 10px;
+  font-weight: 600;
+}
+
+/* ==== Footer ==== */
+.pp-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 22px;
 }
