@@ -1,117 +1,127 @@
 // components/BrandingControls.tsx
-import React from "react";
+import React, { useRef } from "react";
 
 type Props = {
   template: string;
   setTemplate: (v: string) => void;
+
   overlayText: string;
   setOverlayText: (v: string) => void;
+
   brandColor: string;
   setBrandColor: (v: string) => void;
+
   accentColor: string;
   setAccentColor: (v: string) => void;
+
   font: string;
   setFont: (v: string) => void;
+
+  logoDataUrl: string;                // <— NEW
+  setLogoDataUrl: (v: string) => void;// <— NEW
 };
 
-const FONTS = ["Poppins", "Inter", "Montserrat", "Lato", "Roboto"];
+export default function BrandingControls(props: Props) {
+  const {
+    template, setTemplate,
+    overlayText, setOverlayText,
+    brandColor, setBrandColor,
+    accentColor, setAccentColor,
+    font, setFont,
+    logoDataUrl, setLogoDataUrl
+  } = props;
 
-export default function BrandingControls({
-  template, setTemplate,
-  overlayText, setOverlayText,
-  brandColor, setBrandColor,
-  accentColor, setAccentColor,
-  font, setFont
-}: Props) {
-  // Allow pasting hex with or without '#'
-  const normalizeHex = (v: string) => {
-    const x = v.trim();
-    if (!x) return "";
-    return x.startsWith("#") ? x : `#${x}`;
-  };
+  const logoInput = useRef<HTMLInputElement | null>(null);
+
+  function onPickLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    if (!f) return;
+    const reader = new FileReader();
+    reader.onloadend = () => setLogoDataUrl(String(reader.result || ""));
+    reader.readAsDataURL(f);
+  }
 
   return (
-    <div className="pp-form" style={{ marginTop: 16 }}>
-      <div className="pp-row pp-row--cols">
-        <div className="pp-row">
-          <label className="pp-label">Template</label>
-          <select
-            className="pp-select"
-            value={template}
-            onChange={(e) => setTemplate(e.target.value)}
-          >
+    <div className="pp-form">
+      <div className="pp-row">
+        <label className="pp-label">Template</label>
+        <div className="pp-input">
+          <select className="pp-select" value={template} onChange={(e) => setTemplate(e.target.value)}>
             <option value="standard">Standard</option>
             <option value="text-overlay">Text Overlay</option>
-            <option value="minimal">Minimal</option>
           </select>
-        </div>
-
-        <div className="pp-row">
-          <label className="pp-label">Text Overlay</label>
-          <input
-            className="pp-input"
-            placeholder="Your Catchy Title Here"
-            value={overlayText}
-            onChange={(e) => setOverlayText(e.target.value)}
-          />
         </div>
       </div>
 
-      <div className="pp-row pp-row--cols">
-        <div className="pp-row">
-          <label className="pp-label">Brand Color (Hex)</label>
-          <div className="pp-row pp-row--cols">
-            <input
-              className="pp-input"
-              placeholder="#635bff"
-              value={brandColor}
-              onChange={(e) => setBrandColor(normalizeHex(e.target.value))}
-            />
-            <input
-              className="pp-color"
-              type="color"
-              value={brandColor}
-              onChange={(e) => setBrandColor(e.target.value)}
-              title="Pick brand color"
-            />
-          </div>
-        </div>
+      <div className="pp-row">
+        <label className="pp-label">Text Overlay</label>
+        <input
+          className="pp-input"
+          value={overlayText}
+          onChange={(e) => setOverlayText(e.target.value)}
+          placeholder="Your Catchy Title Here"
+        />
+      </div>
 
-        <div className="pp-row">
-          <label className="pp-label">Accent Color (Hex)</label>
-          <div className="pp-row pp-row--cols">
-            <input
-              className="pp-input"
-              placeholder="#10b981"
-              value={accentColor}
-              onChange={(e) => setAccentColor(normalizeHex(e.target.value))}
-            />
-            <input
-              className="pp-color"
-              type="color"
-              value={accentColor}
-              onChange={(e) => setAccentColor(e.target.value)}
-              title="Pick accent color"
-            />
-          </div>
+      <div className="pp-row">
+        <label className="pp-label">Brand Color (hex)</label>
+        <div className="pp-input" style={{ display: "flex", gap: 8 }}>
+          <input className="pp-input" value={brandColor} onChange={(e) => setBrandColor(e.target.value)} />
+          <input type="color" value={brandColor} onChange={(e) => setBrandColor(e.target.value)} />
+        </div>
+      </div>
+
+      <div className="pp-row">
+        <label className="pp-label">Accent Color (hex)</label>
+        <div className="pp-input" style={{ display: "flex", gap: 8 }}>
+          <input className="pp-input" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
+          <input type="color" value={accentColor} onChange={(e) => setAccentColor(e.target.value)} />
         </div>
       </div>
 
       <div className="pp-row">
         <label className="pp-label">Font</label>
-        <select
-          className="pp-select"
-          value={font}
-          onChange={(e) => setFont(e.target.value)}
-        >
-          {FONTS.map(f => <option key={f} value={f}>{f}</option>)}
-        </select>
+        <div className="pp-input">
+          <select className="pp-select" value={font} onChange={(e) => setFont(e.target.value)}>
+            <option value="Poppins">Poppins</option>
+            <option value="Inter">Inter</option>
+            <option value="Montserrat">Montserrat</option>
+            <option value="Lato">Lato</option>
+          </select>
+        </div>
       </div>
 
-      <div className="pp-preview" style={{
-        // give you a live color strip using your chosen colors
-        background: `linear-gradient(90deg, ${brandColor} 0%, ${accentColor} 100%)`
-      }} />
+      {/* Logo uploader */}
+      <div className="pp-row">
+        <label className="pp-label">Logo</label>
+        <div className="pp-input" style={{ padding: 12 }}>
+          {!logoDataUrl ? (
+            <>
+              <button
+                className="pp-btn"
+                onClick={(e) => {
+                  e.preventDefault();
+                  logoInput.current?.click();
+                }}
+              >
+                Upload Logo
+              </button>
+              <input
+                ref={logoInput}
+                type="file"
+                accept="image/png,image/jpeg, image/svg+xml"
+                style={{ display: "none" }}
+                onChange={onPickLogo}
+              />
+            </>
+          ) : (
+            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+              <img src={logoDataUrl} alt="logo" style={{ height: 36 }} />
+              <button className="pp-btn" onClick={() => setLogoDataUrl("")}>Remove</button>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
