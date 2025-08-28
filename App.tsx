@@ -12,7 +12,6 @@ import PinResult from './components/PinResult';
 import ConnectPinterest from './components/ConnectPinterest';
 
 import {
-  LogoIcon,
   SparklesIcon,
   ErrorIcon,
   PinterestIcon,
@@ -27,13 +26,13 @@ const initialBranding: BrandingOptions = {
   overlayText: 'Your Catchy Title Here',
   colors: { text: '#FFFFFF', accent: '#000000' },
   font: 'Poppins',
-  logo: null,                 // your component may store File | null here
+  logo: null,
   template: 'standard',
-  // the next two are optional; BrandingControls can fill them in
+  // optional fields some components already support:
   // @ts-ignore
-  logoDataUrl: undefined,     // string | undefined (data URL)
+  logoDataUrl: undefined,
   // @ts-ignore
-  logoScalePct: 100,          // number (1–300)
+  logoScalePct: 120,
 };
 
 function App() {
@@ -47,13 +46,13 @@ function App() {
   const [designedImageBase64, setDesignedImageBase64] = useState<string | null>(null);
 
   // Workflow state
-  const [currentStep, setCurrentStep] = useState<number>(1); // 1: Upload, 2: Design, 3: Generate, 4: Post
+  const [currentStep, setCurrentStep] = useState<number>(1);
   const [generatedPin, setGeneratedPin] = useState<PinData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [showHelp, setShowHelp] = useState<boolean>(false);
 
-  // Branding state
+  // Branding
   const [brandingOptions, setBrandingOptions] = useState<BrandingOptions>(() => {
     try {
       const saved = localStorage.getItem('brandingOptions');
@@ -64,10 +63,9 @@ function App() {
     } catch {}
     return initialBranding;
   });
-
   const [boards, setBoards] = useState<string>('Home Decor, DIY Projects, Recipes, Fashion');
 
-  // Pinterest state
+  // Pinterest
   const [pinterestToken, setPinterestToken] = useState<string>(() => localStorage.getItem('pinterestAccessToken') || '');
   const [userBoards, setUserBoards] = useState<PinterestBoard[]>([]);
   const [isFetchingBoards, setIsFetchingBoards] = useState<boolean>(false);
@@ -80,7 +78,6 @@ function App() {
   const [scheduleError, setScheduleError] = useState<string | null>(null);
   const [scheduleSuccess, setScheduleSuccess] = useState<string | null>(null);
 
-  // Persist branding
   useEffect(() => {
     localStorage.setItem('brandingOptions', JSON.stringify(brandingOptions));
   }, [brandingOptions]);
@@ -91,13 +88,11 @@ function App() {
     else localStorage.removeItem('pinterestAccessToken');
   };
 
-  // Auto-fetch boards if token already in storage on first load
   useEffect(() => {
     if (pinterestToken) handleFetchBoards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Auto-fetch boards when token appears after generation
   useEffect(() => {
     if (pinterestToken && generatedPin && userBoards.length === 0 && !isFetchingBoards) {
       handleFetchBoards();
@@ -124,6 +119,12 @@ function App() {
     }
   };
 
+  const handleSimpleFileInput = (file: File | null) => {
+    if (!file) return;
+    const type = file.type.startsWith('video') ? 'video' : 'image';
+    handleMediaUpload(file, type as 'image' | 'video');
+  };
+
   const handleMediaUpload = useCallback((file: File, type: 'image' | 'video') => {
     resetState();
     setMediaFile(file);
@@ -140,6 +141,7 @@ function App() {
       reader.readAsDataURL(file);
     } else {
       setMediaPreviewUrl(URL.createObjectURL(file));
+      setCurrentStep(2);
     }
   }, []);
 
@@ -175,9 +177,9 @@ function App() {
     } catch (err: any) {
       console.error(err);
       if (err?.status === 401) {
-        setError("API Key invalid or suspended. Check your Vercel project setting `VITE_GEMINI_API_KEY` (or API_KEY) and redeploy.");
+        setError("API Key invalid or suspended. Check `VITE_GEMINI_API_KEY` in Vercel and redeploy.");
       } else if (typeof err?.message === 'string' && err.message.includes('quota')) {
-        setError('Gemini free tier quota reached. Swap in a fresh key or upgrade the Google account.');
+        setError('Gemini free tier quota reached. Swap to a fresh key or upgrade the Google account.');
       } else {
         setError(err?.message || 'An unknown error occurred. Please try again.');
       }
@@ -219,7 +221,7 @@ function App() {
 
     try {
       if (mediaType === 'image' && designedImageBase64) {
-        setPostingProgress('Posting pin to Pinterest...');
+        setPostingProgress('Posting pin to Pinterest…');
         const base64Data = designedImageBase64.split(',')[1];
         const contentType = mediaFile.type === 'image/png' ? 'image/png' : 'image/jpeg';
         await createPin(pinterestToken, {
@@ -285,7 +287,7 @@ function App() {
       }
 
       const result = await response.json();
-      setScheduleSuccess(result.message || `Pin successfully scheduled for ${new Date(scheduledAt).toLocaleString()}!`);
+      setScheduleSuccess(result.message || `Pin scheduled for ${new Date(scheduledAt).toLocaleString()}!`);
     } catch (err) {
       setScheduleError(err instanceof Error ? err.message : 'An unknown error occurred while scheduling.');
     } finally {
@@ -295,50 +297,42 @@ function App() {
 
   return (
     <div className="pp-wrap">
-      {/* Header with larger logo + aqua tagline */}
+      {/* Header: Logo left, Tagline right */}
       <header className="pp-header">
         <div className="pp-brand">
-          {/* Put /public/logo.png in your repo */}
           <img src="/logo.png" className="pp-logo" alt="Pin Pilot" />
         </div>
+        <div className="pp-header-spacer" />
         <div className="pp-tagline">Pin better. Grow faster.</div>
-        <div className="pp-spacer" />
-        <button
-          className="pp-iconbtn"
-          title="Help"
-          onClick={() => setShowHelp(true)}
-        >
-          <QuestionMarkCircleIcon className="h-4 w-4" />
-          <span>Help</span>
-        </button>
-        <button
-          className="pp-iconbtn"
-          title="Start a new pin"
-          disabled={currentStep === 1 && !mediaFile}
-          onClick={() => resetState(true)}
-        >
-          <RefreshIcon className="h-4 w-4" />
-          <span>Reset</span>
-        </button>
       </header>
 
+      {/* Two side-by-side cards */}
       <main className="pp-main">
+        {/* Left: Upload & Design */}
         <section className="pp-card">
-          {/* Step 1: Upload */}
-          <h3 className="pp-step">
-            <span className="pp-stepnum">1</span> Upload Image or Video
-          </h3>
+          <h3 className="pp-step"><span className="pp-stepnum">1</span> Upload & Brand</h3>
 
-          {!mediaFile ? (
+          {/* Your component + a simple native input as a fallback */}
+          <div className="pp-uploaderrow">
             <MediaUploader onMediaUpload={handleMediaUpload} onFrameCapture={handleFrameCapture} />
-          ) : (
+
+            <div className="pp-or">or</div>
+
+            <label className="pp-fallback">
+              <input
+                type="file"
+                accept="image/png,image/jpeg,video/mp4,video/webm"
+                onChange={(e) => handleSimpleFileInput(e.target.files?.[0] || null)}
+              />
+              <span>Choose File</span>
+            </label>
+          </div>
+
+          {/* Selected file pill */}
+          {mediaFile && (
             <div className="pp-filepill">
-              {mediaType === 'image' && mediaPreviewUrl && (
-                <img src={mediaPreviewUrl} alt="Preview" className="pp-thumb" />
-              )}
-              {mediaType === 'video' && mediaPreviewUrl && (
-                <video src={mediaPreviewUrl} muted playsInline className="pp-thumb" />
-              )}
+              {mediaType === 'image' && mediaPreviewUrl && <img src={mediaPreviewUrl} alt="Preview" className="pp-thumb" />}
+              {mediaType === 'video' && mediaPreviewUrl && <video src={mediaPreviewUrl} muted playsInline className="pp-thumb" />}
               <div className="pp-filemeta">
                 <div className="pp-filename">{mediaFile.name}</div>
                 <div className="pp-filesize">
@@ -349,8 +343,8 @@ function App() {
             </div>
           )}
 
-          {/* Step 2: Design */}
-          {currentStep >= 2 && frameForAI && (
+          {/* Branding + Generate */}
+          {currentStep >= 2 && (
             <>
               <BrandingControls options={brandingOptions} setOptions={setBrandingOptions} />
               <BoardInput value={boards} onChange={setBoards} />
@@ -373,7 +367,7 @@ function App() {
           )}
         </section>
 
-        {/* Preview / Result */}
+        {/* Right: Preview / Results */}
         <section className="pp-card">
           <h3 className="pp-step">
             <span className="pp-stepnum">{currentStep < 3 ? '2' : '3'}</span>
@@ -406,7 +400,7 @@ function App() {
               </div>
             )}
 
-            {currentStep < 2 && !mediaFile && (
+            {!mediaFile && (
               <div className="pp-empty">
                 <div className="pp-emptyicons">
                   <ImageIcon className="h-14 w-14" />
@@ -439,44 +433,59 @@ function App() {
             )}
           </div>
 
-          {/* Pro connect block */}
+          {/* Pro connect area */}
           {generatedPin && (
             <div className="pp-connectblock">
               {isPro ? (
                 <>
-                  <p className="muted">Connected features</p>
                   <ConnectPinterest />
-                  <button
-                    className="pp-secondary"
-                    onClick={handleFetchBoards}
-                    disabled={isFetchingBoards || !pinterestToken}
-                  >
-                    {isFetchingBoards ? (
-                      <LoadingSpinner className="h-4 w-4" />
-                    ) : (
-                      <>
-                        <PinterestIcon className="h-4 w-4 mr-2" />
-                        Fetch My Boards
-                      </>
-                    )}
-                  </button>
+                  <div className="pp-hstack mt8">
+                    <input
+                      type="password"
+                      placeholder="Pinterest Access Token"
+                      value={pinterestToken}
+                      onChange={(e) => handlePinterestTokenChange(e.target.value)}
+                    />
+                    <button
+                      className="pp-secondary"
+                      onClick={handleFetchBoards}
+                      disabled={isFetchingBoards || !pinterestToken}
+                    >
+                      {isFetchingBoards ? 'Fetching…' : (
+                        <>
+                          <PinterestIcon className="h-4 w-4 mr-2" />
+                          Fetch My Boards
+                        </>
+                      )}
+                    </button>
+                  </div>
                   {fetchBoardsError && <p className="pp-errtext">{fetchBoardsError}</p>}
                   {userBoards.length > 0 && !isFetchingBoards && (
                     <div className="pp-successpill">
                       <CheckCircleIcon className="h-5 w-5 mr-2" />
-                      Successfully fetched {userBoards.length} boards! You can now post your pin.
+                      Loaded {userBoards.length} boards.
                     </div>
                   )}
                 </>
               ) : (
-                <div className="pp-upgrade">
-                  This is a Pro feature. To test locally add <code>?pro=1</code> to your URL.
-                </div>
+                <div className="pp-upgrade">Pinterest connect & scheduling are Pro features.</div>
               )}
             </div>
           )}
         </section>
       </main>
+
+      {/* Centered actions under the two cards */}
+      <div className="pp-actionsbar">
+        <button className="pp-iconbtn" onClick={() => setShowHelp(true)}>
+          <QuestionMarkCircleIcon className="h-4 w-4" />
+          <span>Help</span>
+        </button>
+        <button className="pp-iconbtn" onClick={() => resetState(true)} disabled={currentStep === 1 && !mediaFile}>
+          <RefreshIcon className="h-4 w-4" />
+          <span>Reset</span>
+        </button>
+      </div>
 
       {showHelp && (
         <div className="pp-modal" onClick={() => setShowHelp(false)} role="dialog" aria-modal="true">
@@ -486,8 +495,9 @@ function App() {
               <button className="pp-close" onClick={() => setShowHelp(false)}>×</button>
             </div>
             <div className="pp-modalbody">
-              <p>• If you see a quota error from Google, swap to a fresh Gemini key.</p>
-              <p>• Pro features (Pinterest connect & scheduling) unlock when <code>?pro=1</code> is in the URL.</p>
+              <p>• Use the file picker if the drag-and-drop uploader is blocked by your browser.</p>
+              <p>• Hex brand colors + logo scale live inside “Design & Brand”.</p>
+              <p>• Pro features unlock with <code>?pro=1</code> while testing.</p>
             </div>
           </div>
         </div>
