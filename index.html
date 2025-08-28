@@ -7,26 +7,13 @@
       content="width=device-width, initial-scale=1, maximum-scale=1"
     />
     <title>Pin Pilot</title>
-    <meta name="theme-color" content="#5459d4" />
-
-    <!-- Fonts (match your WP site) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link
-      href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&family=Poppins:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-
-    <!-- Favicon / App icon (safe if file missing) -->
-    <link rel="icon" href="/logo.svg" />
-
-    <!-- Global CSS -->
-    <link rel="stylesheet" href="/index.css" />
+    <link rel="icon" href="/favicon.ico" />
   </head>
-
   <body>
+    <!-- THIS id MUST MATCH index.tsx -->
     <div id="root"></div>
-    <!-- Vite entry (don’t open this file directly; use npm run dev) -->
+
+    <!-- Vite injects the bundle here -->
     <script type="module" src="/index.tsx"></script>
   </body>
 </html>
