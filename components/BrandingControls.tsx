@@ -1,126 +1,157 @@
 import React, { useRef } from "react";
-import type { BrandingOptions } from "../types";
+
+type Branding = {
+  overlayText: string;
+  colors: { text: string; accent: string };
+  font: string;
+  logoDataUrl: string | null;
+  includeLogo: boolean;
+  template: "standard" | "bottomBar";
+};
 
 export default function BrandingControls({
-  options,
-  setOptions,
+  value,
+  onChange,
 }: {
-  options: BrandingOptions;
-  setOptions: (o: BrandingOptions) => void;
+  value: Branding;
+  onChange: (v: Branding) => void;
 }) {
-  const logoRef = useRef<HTMLInputElement>(null);
+  const logoInput = useRef<HTMLInputElement | null>(null);
 
-  const set = (patch: Partial<BrandingOptions>) => setOptions({ ...options, ...patch });
-  const setColors = (patch: Partial<BrandingOptions["colors"]>) =>
-    setOptions({ ...options, colors: { ...options.colors, ...patch } });
+  const set = <K extends keyof Branding>(k: K, v: Branding[K]) =>
+    onChange({ ...value, [k]: v });
 
-  const onLogo = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const f = e.target.files?.[0];
-    if (!f) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      set({ logo: f as any, logoDataUrl: reader.result as string, logoScalePct: options.logoScalePct ?? 150 });
-    };
-    reader.readAsDataURL(f);
+  const setColor = (k: "text" | "accent", hex: string) => {
+    onChange({ ...value, colors: { ...value.colors, [k]: hex } });
+  };
+
+  const chooseLogo = (file?: File | null) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    const r = new FileReader();
+    r.onload = () => onChange({ ...value, logoDataUrl: r.result as string });
+    r.readAsDataURL(file);
   };
 
   return (
-    <div className="form">
-      <div className="grid two sm">
-        <label className="field">
-          <div className="label">Template</div>
-          <div className="seg">
-            <button
-              className={`seg-btn ${options.template === "standard" ? "active" : ""}`}
-              onClick={(e) => { e.preventDefault(); set({ template: "standard" }); }}
-            >Standard</button>
-            <button
-              className={`seg-btn ${options.template === "bottomBar" ? "active" : ""}`}
-              onClick={(e) => { e.preventDefault(); set({ template: "bottomBar" }); }}
-            >Bottom Bar</button>
-          </div>
-        </label>
+    <div className="pp-stack">
+      <label>
+        Text Overlay
+        <input
+          type="text"
+          value={value.overlayText}
+          onChange={(e) => set("overlayText", e.target.value)}
+          placeholder="Your Catchy Title Here"
+        />
+      </label>
 
-        <label className="field">
-          <div className="label">Text Overlay</div>
-          <input
-            className="input"
-            value={options.overlayText}
-            onChange={(e) => set({ overlayText: e.target.value })}
-            placeholder="Your Catchy Title Here"
-          />
-        </label>
-      </div>
-
-      <div className="grid two sm">
-        <label className="field">
-          <div className="label">Brand Color (hex)</div>
-          <div className="input-row">
+      <div className="pp-grid-2">
+        <label>
+          Brand Color (hex)
+          <div className="pp-colorrow">
             <input
-              className="input"
-              value={options.colors.text}
-              onChange={(e) => setColors({ text: e.target.value })}
-              placeholder="#ffffff"
+              type="text"
+              value={value.colors.text}
+              onChange={(e) => setColor("text", e.target.value)}
+              placeholder="#111827"
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
             />
             <input
-              className="swatch"
               type="color"
-              value={options.colors.text}
-              onChange={(e) => setColors({ text: e.target.value })}
+              value={value.colors.text}
+              onChange={(e) => setColor("text", e.target.value)}
             />
           </div>
         </label>
 
-        <label className="field">
-          <div className="label">Accent Color (hex)</div>
-          <div className="input-row">
+        <label>
+          Accent Color (hex)
+          <div className="pp-colorrow">
             <input
-              className="input"
-              value={options.colors.accent}
-              onChange={(e) => setColors({ accent: e.target.value })}
-              placeholder="#10b981"
+              type="text"
+              value={value.colors.accent}
+              onChange={(e) => setColor("accent", e.target.value)}
+              placeholder="#2dd4bf"
+              spellCheck={false}
+              autoCapitalize="off"
+              autoCorrect="off"
             />
             <input
-              className="swatch"
               type="color"
-              value={options.colors.accent}
-              onChange={(e) => setColors({ accent: e.target.value })}
+              value={value.colors.accent}
+              onChange={(e) => setColor("accent", e.target.value)}
             />
           </div>
         </label>
       </div>
 
-      <div className="grid two sm">
-        <label className="field">
-          <div className="label">Font</div>
+      <div className="pp-grid-2">
+        <label>
+          Font
           <select
-            className="input"
-            value={options.font}
-            onChange={(e) => set({ font: e.target.value })}
+            value={value.font}
+            onChange={(e) => set("font", e.target.value)}
           >
-            <option>Poppins</option>
-            <option>Inter</option>
-            <option>Montserrat</option>
-            <option>Raleway</option>
+            <option value="Poppins">Poppins</option>
+            <option value="Inter">Inter</option>
+            <option value="Montserrat">Montserrat</option>
+            <option value="Lato">Lato</option>
           </select>
         </label>
 
-        <label className="field">
-          <div className="label">Logo</div>
-          <div className="row">
-            <button className="btn" onClick={(e)=>{e.preventDefault(); logoRef.current?.click();}}>
+        <label>
+          Template
+          <select
+            value={value.template}
+            onChange={(e) =>
+              set("template", e.target.value as Branding["template"])
+            }
+          >
+            <option value="bottomBar">Bottom Bar</option>
+            <option value="standard">Standard</option>
+          </select>
+        </label>
+      </div>
+
+      <div className="pp-grid-2">
+        <div>
+          <div className="pp-label">Logo</div>
+          {value.logoDataUrl ? (
+            <div className="pp-logo-preview">
+              <img src={value.logoDataUrl} alt="logo" />
+              <button
+                className="pp-btn tiny ghost"
+                onClick={() => onChange({ ...value, logoDataUrl: null })}
+              >
+                Remove
+              </button>
+            </div>
+          ) : (
+            <button
+              className="pp-btn ghost"
+              onClick={() => logoInput.current?.click()}
+            >
               Upload Logo
             </button>
-            <input ref={logoRef} type="file" accept="image/*" hidden onChange={onLogo}/>
-            {options.logoDataUrl && (
-              <img
-                src={options.logoDataUrl}
-                alt="logo"
-                className="logo-thumb"
-                style={{ width: Math.max(64, (options.logoScalePct ?? 150) / 1.6), height: "auto" }}
-              />
-            )}
-          </div>
+          )}
+          <input
+            ref={logoInput}
+            type="file"
+            hidden
+            accept="image/*"
+            onChange={(e) => chooseLogo(e.currentTarget.files?.[0])}
+          />
+        </div>
+
+        <label className="pp-checkbox">
+          <input
+            type="checkbox"
+            checked={value.includeLogo}
+            onChange={(e) => set("includeLogo", e.target.checked)}
+          />
+          Include logo on the image
         </label>
       </div>
     </div>
