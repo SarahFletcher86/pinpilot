@@ -1,6 +1,17 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* index.css */
+@import "tailwindcss";
+
+/* Optional: your brand tokens with v4's @theme */
+@theme {
+  --color-primary: #5459d4;
+  --color-accent:  #74d6d8;
+  --color-ink:     #1d1d1f;
+  --color-body:    #2f2f3a;
+  --color-bg:      #f5f6f7;
+
+  --radius-xl: 1rem;
+  --radius-2xl: 1.25rem;
+}
 
 :root {
   --bg: #f6f7fb;
