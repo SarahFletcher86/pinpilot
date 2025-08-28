@@ -36,7 +36,6 @@ html, body, #root, #app {
 }
 .pp-brand { display:flex; align-items:center; gap:8px; }
 .pp-logo { width:32px; height:32px; }
-.pp-title { font-size: 20px; font-weight: 700; }
 .pp-tagline { font-size: 14px; color: var(--accent); font-weight: 600; }
 
 /* Card */
