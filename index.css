@@ -97,3 +97,42 @@ body{
 .pp-modalcard{background:#fff;border-radius:16px;max-width:720px;width:100%;padding:16px;border:1px solid var(--border)}
 .pp-modalhdr{display:flex;align-items:center;justify-content:space-between}
 .pp-close{appearance:none;border:0;background:none;font-size:28px;line-height:1;cursor:pointer}
+/* === Minimal polish to match site + fix sizing === */
+:root{
+  --pp-blue:#635bff;
+  --pp-aqua:#10b981;
+  --pp-ink:#0f172a;
+  --pp-bg:#f6f7fb;
+  --pp-card:#ffffff;
+  --pp-border:#e5e7eb;
+}
+
+/* Hide any big H1 header if it slipped back in */
+.app-header h1 { display:none !important; }
+
+/* Make the UI header logo larger */
+.brand-logo{ width:56px; height:auto; }
+
+/* Card polish */
+.card{ background:var(--pp-card); border:1px solid var(--pp-border); border-radius:14px; padding:16px; box-shadow:0 8px 30px rgba(0,0,0,.04); }
+.card-title{ font-weight:700; font-size:18px; margin:4px 0 12px; }
+
+/* Uploader (one control only) */
+.uploader{ border:1px dashed #c7c9d0; border-radius:12px; padding:18px; text-align:center; cursor:pointer; background:#fafbff; }
+.uploader-inner .subtle{ color:#6b7280; font-size:12px; margin-top:4px; }
+
+/* Fields */
+.field .label{ font-size:12px; font-weight:600; color:#6b7280; margin-bottom:6px; }
+.input{ width:100%; border:1px solid var(--pp-border); border-radius:10px; padding:10px 12px; background:#fff; }
+.input-row{ display:flex; gap:8px; align-items:center; }
+.swatch{ width:44px; height:36px; padding:0; border:1px solid var(--pp-border); border-radius:10px; background:#fff; }
+.row{ display:flex; align-items:center; gap:10px; }
+.logo-thumb{ border:1px solid var(--pp-border); border-radius:12px; background:#fff; padding:6px; }
+
+/* Preview containment — no giant canvas */
+.preview-box{ background:#f8fafc; border:1px solid var(--pp-border); border-radius:12px; overflow:hidden; }
+.preview-canvas{ display:block; width:100%; height:auto; max-height:560px; object-fit:contain; }
+
+/* Buttons */
+.btn{ display:inline-flex; align-items:center; gap:8px; border-radius:12px; border:1px solid var(--pp-border); padding:10px 14px; background:#fff; font-weight:700; }
+.btn.primary{ background:linear-gradient(135deg, var(--pp-blue), #4f46e5); color:#fff; border-color:transparent; }
