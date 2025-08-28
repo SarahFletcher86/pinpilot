@@ -1,148 +1,201 @@
-// components/PinResult.tsx
-import React from "react";
-
-type Branding = {
-  overlayText: string;
-  brandColor: string;
-  accentColor: string;
-  font: string;
-  logoDataUrl: string; // may be empty
-  template: string;
-};
+import React, { useMemo } from 'react';
+import { PinData, BrandingOptions, PinterestBoard } from '../types';
 
 type Props = {
-  previewUrl: string;
-  fileName: string;
-  result: { title: string; description: string; tags: string[] };
-  branding?: Branding;
+  finalPinImageUrl: string | null;
+  mediaPreviewUrl: string | null;
+  mediaType: 'image' | 'video' | null;
+  pinData: PinData;
+
+  branding: BrandingOptions;
+
+  isPro?: boolean;
+  isConnected?: boolean;
+  userBoards?: PinterestBoard[];
+
+  onPostPin?: (boardId: string, title: string, description: string) => void;
+
+  isPosting?: boolean;
+  postError?: string | null;
+  postSuccess?: string | null;
+  postingProgress?: string | null;
+
+  onSchedulePin?: (boardId: string, title: string, description: string, scheduledAt: string) => void;
+  isScheduling?: boolean;
+  scheduleError?: string | null;
+  scheduleSuccess?: string | null;
 };
 
-export default function PinResult({ previewUrl, fileName, result, branding }: Props) {
-  function copy(txt: string) {
-    navigator.clipboard?.writeText(txt);
-  }
+const loadImage = (src: string) =>
+  new Promise<HTMLImageElement>((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => resolve(img);
+    img.onerror = reject;
+    img.src = src;
+  });
 
-  function downloadRaw() {
-    fetch(previewUrl)
-      .then(r => r.blob())
-      .then(blob => {
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = fileName || "pin";
-        a.click();
-        setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-      });
-  }
+export default function PinResult({
+  finalPinImageUrl,
+  mediaPreviewUrl,
+  mediaType,
+  pinData,
 
-  async function downloadBranded() {
-    if (!branding) return downloadRaw();
+  branding,
 
-    const base = await loadImage(previewUrl);
-    const canvas = document.createElement("canvas");
-    const W = base.width;
-    const H = base.height;
-    canvas.width = W;
-    canvas.height = H;
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(base, 0, 0, W, H);
+  isPro,
+  isConnected,
+  userBoards = [],
 
-    // overlay band (bottom)
-    const bandH = Math.max(64, Math.round(H * 0.12));
-    ctx.fillStyle = hex(branding.brandColor, 0.85);
-    ctx.fillRect(0, H - bandH, W, bandH);
+  onPostPin,
+  isPosting,
+  postError,
+  postSuccess,
+  postingProgress,
 
-    // text
-    const pad = Math.round(bandH * 0.3);
-    ctx.fillStyle = "#ffffff";
-    ctx.font = `${Math.round(bandH * 0.45)}px ${branding.font}, sans-serif`;
-    ctx.textBaseline = "middle";
-    ctx.fillText(branding.overlayText || "", pad, H - bandH / 2);
+  onSchedulePin,
+  isScheduling,
+  scheduleError,
+  scheduleSuccess,
+}: Props) {
+  const previewSrc = useMemo(() => {
+    return finalPinImageUrl || mediaPreviewUrl || null;
+  }, [finalPinImageUrl, mediaPreviewUrl]);
 
-    // logo (right)
-    if (branding.logoDataUrl) {
-      const logo = await loadImage(branding.logoDataUrl);
-      const maxH = Math.round(bandH * 0.6);
-      const scale = maxH / logo.height;
-      const lw = Math.round(logo.width * scale);
-      const lh = Math.round(logo.height * scale);
-      const lx = W - lw - pad;
-      const ly = H - bandH / 2 - lh / 2;
-      ctx.drawImage(logo, lx, ly, lw, lh);
+  const downloadBranded = async () => {
+    if (!previewSrc) return;
+
+    const base = await loadImage(previewSrc);
+    const canvas = document.createElement('canvas');
+    canvas.width = base.width;
+    canvas.height = base.height;
+    const ctx = canvas.getContext('2d')!;
+
+    // Base
+    ctx.drawImage(base, 0, 0);
+
+    // Accent bar (simple, from branding)
+    ctx.fillStyle = branding?.colors?.accent || '#000';
+    ctx.globalAlpha = 0.18;
+    ctx.fillRect(0, 0, canvas.width, Math.ceil(canvas.height * 0.18));
+    ctx.globalAlpha = 1;
+
+    // Overlay text
+    if (branding?.overlayText) {
+      ctx.fillStyle = branding?.colors?.text || '#fff';
+      ctx.font = `bold ${Math.max(28, canvas.width * 0.04)}px ${branding?.font || 'Poppins'}`;
+      ctx.textBaseline = 'top';
+      ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      ctx.shadowBlur = 8;
+      ctx.fillText(branding.overlayText, 20, 20);
+      ctx.shadowBlur = 0;
     }
 
-    canvas.toBlob((blob) => {
-      if (!blob) return;
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = addSuffix(fileName || "pin.jpg", "-branded");
-      a.click();
-      setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    }, "image/jpeg", 0.95);
-  }
+    // User logo (supports either branding.logoDataUrl or branding.logo?.dataUrl)
+    // Also supports optional branding.logoScalePct (default 100)
+    // @ts-ignore
+    const possibleDataUrl: string | undefined = branding?.logoDataUrl || branding?.logo?.dataUrl;
+    if (possibleDataUrl) {
+      const logo = await loadImage(possibleDataUrl);
+      // @ts-ignore
+      const scalePct: number = branding?.logoScalePct || 100;
+      const scale = Math.max(0.05, Math.min(3, scalePct / 100)); // clamp 5%–300%
 
-  const tagsStr = result.tags.map(t => `#${t}`).join(" ");
+      const targetW = Math.max(64, logo.width * scale);
+      const targetH = (logo.height * targetW) / logo.width;
+
+      const pad = Math.max(16, Math.round(canvas.width * 0.02));
+      ctx.drawImage(logo, canvas.width - targetW - pad, canvas.height - targetH - pad, targetW, targetH);
+    }
+
+    const data = canvas.toDataURL('image/jpeg', 0.92);
+    const a = document.createElement('a');
+    a.href = data;
+    a.download = 'pinpilot-branded.jpg';
+    a.click();
+  };
 
   return (
-    <div className="pp-form" style={{ marginTop: 18 }}>
-      <div className="pp-row">
-        <label className="pp-label">Preview</label>
-        <div className="pp-input" style={{ padding: 0 }}>
-          <img src={previewUrl} alt="preview" style={{ width: "100%", borderRadius: 10 }} />
+    <div className="pp-result">
+      {previewSrc ? (
+        <img src={previewSrc} alt="Preview" className="pp-render" />
+      ) : (
+        <div className="pp-empty">No preview available.</div>
+      )}
+
+      <div className="pp-fields">
+        <div className="pp-field">
+          <label>Title</label>
+          <input type="text" value={pinData?.title || ''} readOnly />
         </div>
-        <div className="pp-actions">
-          <button className="pp-btn" onClick={downloadRaw}>Download Original</button>
-          <button className="pp-btn pp-btn--primary" onClick={downloadBranded}>Download Branded Image</button>
+        <div className="pp-field">
+          <label>Description</label>
+          <textarea rows={3} value={pinData?.description || ''} readOnly />
+        </div>
+        <div className="pp-field">
+          <label>Keywords / Tags</label>
+          <textarea rows={2} value={(pinData?.keywords || []).join(', ')} readOnly />
         </div>
       </div>
 
-      <div className="pp-row">
-        <label className="pp-label">Title</label>
-        <div className="pp-input _flex">
-          <div className="_grow">{result.title}</div>
-          <button className="pp-btn" onClick={() => copy(result.title)}>Copy</button>
-        </div>
-      </div>
+      <div className="pp-actions">
+        <button className="pp-secondary" onClick={downloadBranded} disabled={!previewSrc}>
+          Download Branded Image
+        </button>
 
-      <div className="pp-row">
-        <label className="pp-label">Description</label>
-        <div className="pp-input _flex">
-          <div className="_grow">{result.description}</div>
-          <button className="pp-btn" onClick={() => copy(result.description)}>Copy</button>
-        </div>
-      </div>
+        {/* Pro posting / scheduling */}
+        {isPro ? (
+          <div className="pp-proactions">
+            <div className="pp-prorow">
+              <span className="muted">Post to Pinterest</span>
+              <div className="pp-hstack">
+                <select id="pp-board" disabled={!isConnected || userBoards.length === 0}>
+                  {userBoards.map(b => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+                <button
+                  className="pp-primary"
+                  disabled={!isConnected || !onPostPin || !pinData?.title}
+                  onClick={() => {
+                    const sel = document.getElementById('pp-board') as HTMLSelectElement | null;
+                    const boardId = sel?.value || '';
+                    onPostPin?.(boardId, pinData.title, pinData.description || '');
+                  }}
+                >
+                  {isPosting ? 'Posting…' : 'Post Now'}
+                </button>
+              </div>
+              {postingProgress && <div className="muted">{postingProgress}</div>}
+              {postError && <div className="pp-errtext">{postError}</div>}
+              {postSuccess && <div className="pp-successtext">{postSuccess}</div>}
+            </div>
 
-      <div className="pp-row">
-        <label className="pp-label">Tags</label>
-        <div className="pp-input _flex">
-          <div className="_grow">{tagsStr}</div>
-          <button className="pp-btn" onClick={() => copy(tagsStr)}>Copy</button>
-        </div>
+            <div className="pp-prorow">
+              <span className="muted">Schedule</span>
+              <div className="pp-hstack">
+                <input id="pp-when" type="datetime-local" />
+                <button
+                  className="pp-secondary"
+                  disabled={!isConnected || !onSchedulePin || !pinData?.title}
+                  onClick={() => {
+                    const sel = document.getElementById('pp-board') as HTMLSelectElement | null;
+                    const boardId = sel?.value || '';
+                    const when = (document.getElementById('pp-when') as HTMLInputElement | null)?.value || '';
+                    onSchedulePin?.(boardId, pinData.title, pinData.description || '', when);
+                  }}
+                >
+                  {isScheduling ? 'Scheduling…' : 'Schedule'}
+                </button>
+              </div>
+              {scheduleError && <div className="pp-errtext">{scheduleError}</div>}
+              {scheduleSuccess && <div className="pp-successtext">{scheduleSuccess}</div>}
+            </div>
+          </div>
+        ) : (
+          <div className="pp-upgrade">Pinterest connect & scheduling are Pro features.</div>
+        )}
       </div>
     </div>
   );
-}
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((res, rej) => {
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => res(img);
-    img.onerror = rej;
-    img.src = src;
-  });
-}
-
-function addSuffix(name: string, sfx: string) {
-  const i = name.lastIndexOf(".");
-  if (i < 0) return name + sfx + ".jpg";
-  return name.slice(0, i) + sfx + name.slice(i);
-}
-
-function hex(hexColor: string, alpha = 1) {
-  // turns #rrggbb + alpha into rgba()
-  const h = hexColor.replace("#", "");
-  const r = parseInt(h.slice(0, 2), 16);
-  const g = parseInt(h.slice(2, 4), 16);
-  const b = parseInt(h.slice(4, 6), 16);
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
