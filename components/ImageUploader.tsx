@@ -1,98 +1,61 @@
-import React, { useRef, useCallback } from 'react';
-import { UploadIcon } from './Icons';
+// components/ImageUploader.tsx
+import React, { useRef, useState } from "react";
 
-interface MediaUploaderProps {
-  onMediaUpload: (file: File, fileType: 'image' | 'video') => void;
-  onFrameCapture: (base64Frame: string) => void;
-}
+export default function ImageUploader() {
+  const ref = useRef<HTMLInputElement | null>(null);
+  const [fileName, setFileName] = useState<string>("");
 
-const MediaUploader: React.FC<MediaUploaderProps> = ({ onMediaUpload, onFrameCapture }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const videoRef = useRef<HTMLVideoElement>(null);
+  function onSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    setFileName(f ? `${f.name} (${Math.round(f.size/1024)} KB)` : "");
+  }
 
-  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      const type = file.type.startsWith('image/') ? 'image' : 'video';
-      onMediaUpload(file, type);
+  function onDrop(e: React.DragEvent<HTMLDivElement>) {
+    e.preventDefault();
+    const f = e.dataTransfer.files?.[0];
+    if (ref.current && f) {
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      ref.current.files = dt.files;
+      setFileName(`${f.name} (${Math.round(f.size/1024)} KB)`);
     }
-    // Reset file input value to allow re-uploading the same file
-    if(event.target) {
-        event.target.value = '';
-    }
-  };
-  
-  const handleDrop = (event: React.DragEvent<HTMLLabelElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-    const file = event.dataTransfer.files?.[0];
-    if (file && (file.type.startsWith('image/') || file.type.startsWith('video/'))) {
-      const type = file.type.startsWith('image/') ? 'image' : 'video';
-      onMediaUpload(file, type);
-    }
-  };
-
-  const captureFrame = useCallback((e: React.SyntheticEvent<HTMLVideoElement, Event>) => {
-    const videoElement = e.currentTarget;
-    if (videoElement) {
-        // Ensure video is seekable
-        setTimeout(() => {
-            const canvas = document.createElement('canvas');
-            canvas.width = videoElement.videoWidth;
-            canvas.height = videoElement.videoHeight;
-            const ctx = canvas.getContext('2d');
-            if (ctx) {
-                ctx.drawImage(videoElement, 0, 0, canvas.width, canvas.height);
-                const dataUrl = canvas.toDataURL('image/jpeg');
-                onFrameCapture(dataUrl);
-            }
-        }, 100); // Small delay to ensure the frame is ready
-    }
-  }, [onFrameCapture]);
-
-  const handleDragOver = (event: React.DragEvent<HTMLLabelElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
-  };
-
-  const triggerFileSelect = (e: React.MouseEvent) => {
-      e.preventDefault();
-      fileInputRef.current?.click();
   }
 
   return (
-    <div>
-        <label
-            onDrop={handleDrop}
-            onDragOver={handleDragOver}
-            className="relative flex justify-center items-center w-full h-48 px-4 transition bg-white border-2 border-slate-300 border-dashed rounded-md appearance-none cursor-pointer hover:border-slate-400 focus:outline-none"
-        >
-            <div className="text-center">
-            <UploadIcon className="mx-auto h-10 w-10 text-slate-400" />
-            <p className="mt-2 text-sm text-slate-600">
-                <span className="font-medium text-slate-700 underline hover:text-slate-800" onClick={triggerFileSelect}>Click to upload</span> or drag and drop
-            </p>
-            <p className="text-xs text-slate-500">Image (PNG, JPG) or Video (MP4)</p>
-            </div>
-            <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*,video/mp4,video/quicktime"
-            onChange={handleFileChange}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            />
-        </label>
-        {/* Hidden video element for frame capture */}
-        <video 
-            ref={videoRef}
-            onLoadedData={captureFrame}
-            muted
-            playsInline
-            src={videoRef.current?.src}
-            className="hidden"
+    <div className="pp-form">
+      <div
+        className="pp-drop"
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={onDrop}
+      >
+        <div style={{ marginBottom: 8 }}>
+          <strong>Click to upload</strong> or drag and drop
+        </div>
+        <div style={{ fontSize: 12 }}>
+          Image (PNG/JPG) or Video (MP4)
+        </div>
+        <div style={{ marginTop: 12 }}>
+          <button className="pp-btn" onClick={(e) => { e.preventDefault(); ref.current?.click(); }}>
+            Choose File
+          </button>
+        </div>
+        <input
+          ref={ref}
+          type="file"
+          style={{ display: "none" }}
+          accept="image/png,image/jpeg,video/mp4"
+          onChange={onSelect}
         />
+      </div>
+
+      {fileName && (
+        <div className="pp-row">
+          <div className="pp-label">Selected file</div>
+          <div className="pp-input" style={{ paddingTop: 8, paddingBottom: 8 }}>
+            {fileName}
+          </div>
+        </div>
+      )}
     </div>
   );
-};
-
-export default MediaUploader;
+}
