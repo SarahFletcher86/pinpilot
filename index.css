@@ -1,4 +1,7 @@
-/* index.css — minimal, no Tailwind needed */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
   --bg: #f6f7fb;
   --card: #ffffff;
