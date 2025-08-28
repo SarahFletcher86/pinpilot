@@ -1,46 +1,33 @@
+// api/auth/schedule.ts
+import { admin } from '../_supabase'
 
-import type { SchedulePinPayload } from '../types';
-
-export const config = {
-  runtime: 'edge',
-};
-
-export default async function handler(req: Request) {
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ message: 'Method Not Allowed' }), { status: 405, headers: { 'Content-Type': 'application/json' } });
-  }
-
+export default async function handler(req: any, res: any) {
   try {
-    const payload: SchedulePinPayload = await req.json();
+    if (req.method !== 'POST') { res.status(405).json({ message: 'Method Not Allowed' }); return; }
+    const {
+      pinterestAccessToken,
+      boardId, title, description,
+      imageBase64, scheduledAt, link
+    } = req.body || {};
 
-    // Basic validation
-    if (!payload.pinterestAccessToken || !payload.boardId || !payload.title || !payload.imageBase64 || !payload.scheduledAt) {
-        return new Response(JSON.stringify({ message: 'Missing required parameters for scheduling.' }), { status: 400, headers: { 'Content-Type': 'application/json' } });
+    if (!pinterestAccessToken || !boardId || !title || !description || !imageBase64 || !scheduledAt) {
+      res.status(400).json({ message: 'Missing required fields' }); return;
     }
 
-    // In a real application, you would do the following:
-    // 1. Authenticate the user to ensure they are on the "pro" plan.
-    // 2. Encrypt and save the pinterestAccessToken securely, linked to the user.
-    // 3. Save the pin details (boardId, title, description, imageBase64, scheduledAt) to a database (e.g., Vercel Postgres).
+    const sb = admin();
+    // Store the image somewhere public; for now, stash the base64 in table (ok for MVP).
+    const { data, error } = await sb.from('schedules').insert({
+      user_id: null, // if you have user auth, set it here
+      board_id: boardId,
+      title, description, link: link || null,
+      media_url: imageBase64, // could be a storage URL in the future
+      scheduled_at: scheduledAt,
+      status: 'queued'
+    }).select().single();
 
-    // For this test, we will just log the data to the serverless function logs.
-    // You can view these logs in your Vercel project dashboard.
-    console.log('Received schedule request:');
-    console.log(`  - Board ID: ${payload.boardId}`);
-    console.log(`  - Title: ${payload.title}`);
-    console.log(`  - Scheduled For: ${new Date(payload.scheduledAt).toLocaleString()}`);
-    console.log(`  - Image Base64 Length: ${payload.imageBase64.length}`);
-    
-    // Simulate a successful save and return a confirmation message.
-    return new Response(JSON.stringify({ 
-      message: `Pin successfully scheduled for ${new Date(payload.scheduledAt).toLocaleString()}!` 
-    }), { 
-      status: 200, 
-      headers: { 'Content-Type': 'application/json' } 
-    });
-
-  } catch (error: any) {
-    console.error("Error in /api/schedule:", error);
-    return new Response(JSON.stringify({ message: error.message || 'An internal server error occurred.' }), { status: 500, headers: { 'Content-Type': 'application/json' } });
+    if (error) { res.status(500).json({ message: error.message }); return; }
+    res.status(200).json({ message: 'Scheduled!', id: data.id });
+  } catch (e: any) {
+    res.status(500).json({ message: e?.message || 'Server error' });
   }
 }

@@ -1,42 +1,30 @@
-import type { VercelRequest, VercelResponse } from '@vercel/node';
-import fetch from 'node-fetch';
-import { createClient } from '@supabase/supabase-js';
+// api/auth/callback.ts
+function html(msg: string) {
+  return `<!doctype html><html><body style="font-family:system-ui;padding:24px">
+  <h1>Pinterest token</h1><pre>${msg}</pre>
+  <p>You can close this tab and return to Pin Pilot.</p>
+</body></html>`;
+}
 
-const supabase = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE!);
-
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const { code, state } = req.query;
-  if (!code) return res.status(400).send("Missing code");
-
+export default async function handler(req: any, res: any) {
   try {
-    const tokenRes = await fetch('https://api.pinterest.com/v5/oauth/token', {
+    const { code, state } = req.query || {};
+    if (!code) { res.status(400).send(html('Missing ?code in callback URL')); return; }
+
+    const redirect_uri = process.env.PINTEREST_REDIRECT_URI!;
+    const r = await fetch(`${req.headers['x-forwarded-proto'] ?? 'https'}://${req.headers.host}/api/auth/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code: code as string,
-        redirect_uri: process.env.PINTEREST_REDIRECT_URI!,
-        client_id: process.env.PINTEREST_CLIENT_ID!,
-        client_secret: process.env.PINTEREST_CLIENT_SECRET!,
-      })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, redirect_uri })
     });
+    const data = await r.json();
+    const pretty = JSON.stringify(data, null, 2);
 
-    const data = await tokenRes.json();
-    if (!tokenRes.ok) throw new Error(data.message || 'OAuth failed');
-
-    // Save into Supabase
-    const email = state; // you can pass email in `state` param
-    await supabase
-      .from('users')
-      .update({
-        pinterest_access_token: data.access_token,
-        pinterest_refresh_token: data.refresh_token,
-        token_expires_at: new Date(Date.now() + data.expires_in * 1000).toISOString()
-      })
-      .eq('email', email);
-
-    res.redirect(`${process.env.APP_BASE_URL}/?connected=1`);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    // Optionally, bounce back to your front-end with tokens in hash (not query)
+    const base = process.env.APP_BASE_URL || `https://${req.headers.host}`;
+    const redirect = `${base}/#pinterest_oauth=${encodeURIComponent(Buffer.from(pretty).toString('base64'))}`;
+    res.status(200).send(html(pretty + `\n\nRedirecting...\n<script>setTimeout(()=>location.replace(${JSON.stringify(redirect)}),800);</script>`));
+  } catch (e: any) {
+    res.status(500).send(html(`Error: ${e?.message || 'Unknown'}`));
   }
 }
