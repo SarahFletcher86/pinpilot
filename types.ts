@@ -1,51 +1,20 @@
-export interface PinData {
-  title: string;
-  description: string;
-  tags: string[];
-  board: string;
-}
-
-export interface PinterestBoard {
-    id: string;
-    name:string;
-}
-
-export interface PinPostPayload {
-    board_id: string;
-    title: string;
-    description: string;
-    media_source: {
-        source_type: 'image_base64';
-        content_type: 'image/jpeg' | 'image/png';
-        data: string;
-    }
-}
-
-export interface VideoPinPostPayload {
-    board_id: string;
-    title: string;
-    description: string;
-    media_source: {
-        source_type: 'video_id';
-        media_id: string;
-    }
-}
-
-export type Template = 'standard' | 'text-overlay' | 'bottom-bar';
+export type TemplateType = 'none' | 'bottomBar' | 'cornerTag' | 'textOverlay';
 
 export interface BrandingOptions {
-    template: Template;
-    overlayText: string;
-    colors: { text: string; accent: string };
-    font: string;
-    logo: string | null;
+  overlayText: string;
+  colors: { brand: string; accent: string; text: string; bar: string };
+  font: string;
+  template: TemplateType;
+  showOverlay: boolean;
+  logoDataUrl: string | null;
+  logoEnabled: boolean;
+  logoSize: number;         // relative width 0.05 - 0.5
+  logoPos: { x: number; y: number }; // 0..1
+  textPos: { x: number; y: number }; // 0..1
 }
 
-export interface SchedulePinPayload {
-    pinterestAccessToken: string;
-    boardId: string;
-    title: string;
-    description: string;
-    imageBase64: string;
-    scheduledAt: string;
+export interface GeneratedContent {
+  title: string;
+  description: string;
+  keywords: string[];
 }
