@@ -61,9 +61,14 @@ export default function App(){
     // Handle Pinterest OAuth callback
     const hash = window.location.hash;
     if (hash.startsWith('#pinterest_oauth=')) {
+      console.log('Pinterest OAuth callback detected, hash:', hash);
       try {
         const encoded = hash.replace('#pinterest_oauth=', '');
-        const decoded = atob(encoded);
+        console.log('Encoded token data:', encoded);
+        const decodedUri = decodeURIComponent(encoded);
+        console.log('URL decoded:', decodedUri);
+        const decoded = atob(decodedUri);
+        console.log('Base64 decoded:', decoded);
         const tokens = JSON.parse(decoded);
         console.log('Pinterest OAuth tokens received:', tokens);
         // Store tokens (you might want to save to localStorage or send to backend)
@@ -73,7 +78,8 @@ export default function App(){
         window.history.replaceState({}, document.title, window.location.pathname);
       } catch (e) {
         console.error('Error parsing Pinterest OAuth tokens:', e);
-        setApiBanner({kind: "error", text: "Error connecting Pinterest account. Please try again."});
+        console.error('Error details:', e.message);
+        setApiBanner({kind: "error", text: `Error connecting Pinterest account: ${e.message}. Check console for details.`});
       }
     }
   },[]);
