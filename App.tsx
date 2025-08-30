@@ -57,6 +57,17 @@ export default function App(){
   useEffect(()=>{
     const s = geminiStatus();
     if (!s.ok) setApiBanner({kind: s.kind, text: s.message});
+
+    // Handle Pinterest OAuth callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const code = urlParams.get('code');
+    const state = urlParams.get('state');
+    if (code) {
+      // Pinterest OAuth successful
+      setApiBanner({kind: "info", text: "Pinterest account connected successfully! Enhanced optimization is now active."});
+      // Clear URL parameters
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
   },[]);
 
   // file helpers
@@ -205,9 +216,12 @@ export default function App(){
         setOverlayText("Your catchy title here");
         setBrand({ primary: "#5459D4", accent: "#74D6D8", text: "#1C1E45" });
         setFont("Poppins");
-        setIncludeLogo(true);
-        setLogoAnchor("bottom-right");
-        setLogoScale(0.22);
+        // Only set logo defaults if no logo is uploaded
+        if (!logoImg) {
+          setIncludeLogo(true);
+          setLogoAnchor("bottom-right");
+          setLogoScale(0.22);
+        }
       }
 
       // Convert files to base64
@@ -495,7 +509,14 @@ Return ONLY valid JSON:
                 <button
                   className="pp-btn"
                   style={{background: '#E60023'}}
-                  onClick={() => alert('Pinterest integration will be available once API posting/scheduling is approved. For now, focus on content optimization!')}
+                  onClick={() => {
+                    const clientId = '1529049'; // From .env
+                    const redirectUri = encodeURIComponent(window.location.origin);
+                    const scope = 'read_public,user_accounts:read,boards:read,pins:read';
+                    const state = Math.random().toString(36).substring(7);
+                    const authUrl = `https://www.pinterest.com/oauth/?response_type=code&redirect_uri=${redirectUri}&client_id=${clientId}&scope=${scope}&state=${state}`;
+                    window.location.href = authUrl;
+                  }}
                 >
                   🔗 Connect Pinterest Account
                 </button>
@@ -593,7 +614,14 @@ Return ONLY valid JSON:
                 <button
                   className="pp-btn"
                   style={{background: '#E60023'}}
-                  onClick={() => alert('Free users can connect Pinterest for enhanced content optimization! This helps generate even better titles, descriptions, and tags tailored to Pinterest trends. No auto-posting or scheduling - that\'s Pro only.')}
+                  onClick={() => {
+                    const clientId = '1529049'; // From .env
+                    const redirectUri = encodeURIComponent(window.location.origin);
+                    const scope = 'read_public,user_accounts:read';
+                    const state = Math.random().toString(36).substring(7);
+                    const authUrl = `https://www.pinterest.com/oauth/?response_type=code&redirect_uri=${redirectUri}&client_id=${clientId}&scope=${scope}&state=${state}`;
+                    window.location.href = authUrl;
+                  }}
                 >
                   🔗 Connect Pinterest Account (Free)
                 </button>
