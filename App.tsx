@@ -59,14 +59,22 @@ export default function App(){
     if (!s.ok) setApiBanner({kind: s.kind, text: s.message});
 
     // Handle Pinterest OAuth callback
-    const urlParams = new URLSearchParams(window.location.search);
-    const code = urlParams.get('code');
-    const state = urlParams.get('state');
-    if (code) {
-      // Pinterest OAuth successful
-      setApiBanner({kind: "info", text: "Pinterest account connected successfully! Enhanced optimization is now active."});
-      // Clear URL parameters
-      window.history.replaceState({}, document.title, window.location.pathname);
+    const hash = window.location.hash;
+    if (hash.startsWith('#pinterest_oauth=')) {
+      try {
+        const encoded = hash.replace('#pinterest_oauth=', '');
+        const decoded = atob(encoded);
+        const tokens = JSON.parse(decoded);
+        console.log('Pinterest OAuth tokens received:', tokens);
+        // Store tokens (you might want to save to localStorage or send to backend)
+        localStorage.setItem('pinterest_tokens', JSON.stringify(tokens));
+        setApiBanner({kind: "info", text: "Pinterest account connected successfully! Enhanced optimization is now active."});
+        // Clear hash
+        window.history.replaceState({}, document.title, window.location.pathname);
+      } catch (e) {
+        console.error('Error parsing Pinterest OAuth tokens:', e);
+        setApiBanner({kind: "error", text: "Error connecting Pinterest account. Please try again."});
+      }
     }
   },[]);
 
@@ -510,12 +518,7 @@ Return ONLY valid JSON:
                   className="pp-btn"
                   style={{background: '#E60023'}}
                   onClick={() => {
-                    const clientId = '1529049'; // From .env
-                    const redirectUri = encodeURIComponent(window.location.origin);
-                    const scope = 'read_public,user_accounts:read,boards:read,pins:read';
-                    const state = Math.random().toString(36).substring(7);
-                    const authUrl = `https://www.pinterest.com/oauth/?response_type=code&redirect_uri=${redirectUri}&client_id=${clientId}&scope=${scope}&state=${state}`;
-                    window.location.href = authUrl;
+                    window.location.href = '/api/auth/start';
                   }}
                 >
                   🔗 Connect Pinterest Account
@@ -615,12 +618,7 @@ Return ONLY valid JSON:
                   className="pp-btn"
                   style={{background: '#E60023'}}
                   onClick={() => {
-                    const clientId = '1529049'; // From .env
-                    const redirectUri = encodeURIComponent(window.location.origin);
-                    const scope = 'read_public,user_accounts:read';
-                    const state = Math.random().toString(36).substring(7);
-                    const authUrl = `https://www.pinterest.com/oauth/?response_type=code&redirect_uri=${redirectUri}&client_id=${clientId}&scope=${scope}&state=${state}`;
-                    window.location.href = authUrl;
+                    window.location.href = '/api/auth/start';
                   }}
                 >
                   🔗 Connect Pinterest Account (Free)
