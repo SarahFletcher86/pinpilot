@@ -587,6 +587,18 @@ Return ONLY valid JSON:
                   🚀 Claim Founder's Pricing - $5/month
                 </a>
               </div>
+
+              <div className="pp-row" style={{marginTop: '20px'}}>
+                <label>Connect Pinterest for Better Optimization</label>
+                <button
+                  className="pp-btn"
+                  style={{background: '#E60023'}}
+                  onClick={() => alert('Free users can connect Pinterest for enhanced content optimization! This helps generate even better titles, descriptions, and tags tailored to Pinterest trends. No auto-posting or scheduling - that\'s Pro only.')}
+                >
+                  🔗 Connect Pinterest Account (Free)
+                </button>
+                <div className="pp-sub">Connect your Pinterest account to get AI-optimized content based on current trends and your account data. No cost to you - helps improve free tier results!</div>
+              </div>
             </div>
           )}
 

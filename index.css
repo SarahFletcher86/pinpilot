@@ -338,4 +338,4 @@ canvas:hover {
 }
 
 /* FOOTER HELP */
-.pp-footer-actions{ display:flex; gap:12px; justify-content:center; margin-top:18px; color:var(--text) }
+.pp-footer-actions{ display:flex; gap:12px; justify-content:center; margin-top:18px; color:var(--accent); font-weight:600 }
