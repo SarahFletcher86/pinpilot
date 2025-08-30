@@ -1,102 +1,98 @@
-/* Pin Pilot app theme — no Tailwind required */
+/* index.css — Pin Pilot app styles (no Tailwind needed) */
+
 :root{
-  --bg: #0f172a;            /* deep indigo backdrop for page */
-  --card: #ffffff;          /* card surface */
-  --ink: #111827;           /* main text */
-  --muted:#6b7280;          /* secondary text */
-  --primary:#635bff;        /* button purple */
-  --aqua:#10b981;           /* brand aqua accents */
-  --border:#e5e7eb;         /* light borders */
-  --shadow: 0 10px 30px rgba(2,8,23,.08);
-  --radius: 16px;
+  --bg: #0b0f1a;               /* deep indigo backdrop (subtle) */
+  --panel: #111827;            /* card frame */
+  --card: #0f172a;             /* card background (slate/indigo) */
+  --text: #e5e7eb;             /* light text */
+  --muted: #9ca3af;
+  --primary: #635bff;          /* PP button violet */
+  --accent: #10b981;           /* PP aqua */
+  --border: #1f2937;
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
 }
 
-*{ box-sizing: border-box }
-html, body, #root, #app { height:100% }
+/* GLOBAL */
+*{ box-sizing:border-box }
+html,body,#root,#app{height:100%}
 body{
   margin:0;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, "Helvetica Neue", Arial, "Noto Sans", "Apple Color Emoji","Segoe UI Emoji";
-  color: var(--ink);
+  font-family: ui-sans-serif, system-ui, Segoe UI, Roboto, Helvetica, Arial;
+  color: var(--text);
   background:
-    radial-gradient(1200px 400px at 20% -10%, #e9f7ff 0%, transparent 60%),
-    radial-gradient(1000px 300px at 90% 0%, #eefbf5 0%, transparent 60%),
+    radial-gradient(1200px 400px at 20% -10%, #1b2458 0%, transparent 60%),
+    radial-gradient(1000px 300px at 90% 0%,  #1c2a7a 0%, transparent 60%),
     var(--bg);
 }
 
-/* Page chrome */
-.pp-wrap{ max-width: 1180px; margin:0 auto; padding: 28px 16px 40px; }
-.pp-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:18px; }
-.pp-brand{ display:flex; align-items:center; gap:10px; }
-.pp-logo{ width:40px; height:40px; display:block }
-.pp-title{ font-weight:700; font-size:20px; color:#fff; }
-.pp-tagline{ color:#a7f3d0; font-weight:600; }
+/* WRAP */
+.pp-wrap{ max-width:1100px; margin:0 auto; padding:28px 16px 40px; }
 
-/* Cards grid */
-.pp-grid{ display:grid; grid-template-columns: 1fr 1.1fr; gap:16px; }
-@media (max-width: 960px){ .pp-grid{ grid-template-columns: 1fr; } }
+/* HEADER */
+.pp-header{
+  display:flex; align-items:center; justify-content:space-between;
+  margin-bottom:18px; gap:12px;
+}
+.pp-brand{ display:flex; align-items:center; gap:10px }
+.pp-brand img{ width:34px; height:34px }
+.pp-title{ font-weight:600; letter-spacing:.2px; color:#dbeafe } /* muted “Pin Pilot” text */
+.pp-tagline{ color:var(--accent); font-weight:600; opacity:.95 }
 
+/* GRID */
+.pp-grid{ display:grid; grid-template-columns: 340px 1fr; gap:16px }
+
+/* CARD */
 .pp-card{
   background: var(--card);
   border:1px solid var(--border);
-  border-radius: var(--radius);
+  border-radius:14px;
+  padding:16px;
   box-shadow: var(--shadow);
-  padding: 16px;
 }
+.pp-card h3{ margin:0 0 10px 0; font-size:16px; color:#f3f4f6 }
+.pp-sub{ color:var(--muted); font-size:12px; margin:6px 0 12px }
 
-/* Card headers */
-.pp-card h3{
-  margin:0 0 10px;
-  font-size:16px;
-  letter-spacing:.2px;
+/* FORM */
+.pp-row{ display:flex; align-items:center; gap:10px; margin:10px 0 }
+.pp-row label{ font-size:12px; color:#cbd5e1; min-width:98px }
+.pp-row input[type="text"],
+.pp-row select,
+.pp-row textarea{
+  width:100%;
+  background:#0b1222;
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:10px 12px;
+  outline:none;
 }
-.pp-step{
-  display:inline-flex; align-items:center; gap:8px;
-  font-weight:700; color:#0f172a;
+.pp-row input[type="color"]{
+  width:38px; height:32px; border:none; background:transparent; padding:0
 }
+.pp-check{ display:flex; align-items:center; gap:8px; font-size:13px; color:#cbd5e1 }
 
-/* Inputs */
-.pp-field{ margin-bottom:12px; }
-.pp-label{ display:flex; align-items:center; justify-content:space-between; font-size:12px; color:var(--muted); margin-bottom:6px; }
-.pp-input, .pp-select, .pp-textarea{
-  width:100%; border:1px solid var(--border); border-radius:10px; padding:10px 12px;
-  font-size:14px; background:#fff; color:var(--ink);
-}
-.pp-textarea{ min-height:88px; resize:vertical; }
-
-/* Colour input next to text hex */
-.pp-color-row{ display:flex; gap:8px; }
-.pp-color-row input[type="color"]{ width:44px; height:44px; border-radius:10px; border:1px solid var(--border); padding:0; }
-
-/* Sliders + toggles */
-.pp-row{ display:flex; align-items:center; gap:10px; }
-.pp-help{ font-size:12px; color:var(--muted); }
-
-/* Buttons */
+/* BUTTONS */
 .pp-btn{
-  display:inline-flex; align-items:center; justify-content:center; gap:8px;
-  border-radius:12px; border:1px solid transparent; padding:10px 14px; font-weight:700; cursor:pointer;
+  background: var(--primary);
+  color:white; border:none; border-radius:12px;
+  padding:10px 14px; font-weight:600; cursor:pointer;
 }
-.pp-btn.primary{ background:var(--primary); color:#fff; }
-.pp-btn.primary:hover{ filter:brightness(0.96); }
-.pp-btn.ghost{ background:#fff; border-color:var(--border); color:var(--ink); }
-.pp-btn.ghost:hover{ background:#f8fafc; }
+.pp-btn:disabled{ opacity:.5; cursor:not-allowed }
+.pp-btn.ghost{ background:#111827; border:1px solid var(--border); color:#e5e7eb }
+.pp-actions{ display:flex; gap:10px; margin-top:12px; flex-wrap:wrap }
 
-/* Footer actions under cards */
-.pp-actions{ display:flex; align-items:center; justify-content:center; gap:10px; margin-top:16px; }
-
-/* Preview area */
-.preview-wrap{ position:relative; width:100%; aspect-ratio: 2 / 3; background:#f8fafc; border:1px dashed #e5e7eb; border-radius:12px; overflow:hidden; }
-.preview-stage{ position:absolute; inset:0; display:grid; place-items:center; }
-.preview-note{ color:var(--muted); font-size:14px; }
-
-/* The canvas is rendered offscreen; the on-screen is <img> scaled */
-.preview-img{ max-width:100%; height:auto; display:block }
-
-/* Drag handle for logo */
-.drag-handle{
-  position:absolute; width:14px; height:14px; right:-7px; bottom:-7px;
-  background:#fff; border:1px solid var(--border); border-radius:6px; box-shadow: var(--shadow);
+/* PREVIEW */
+.preview-wrap{ display:flex; flex-direction:column; gap:12px }
+.canvas-frame{
+  background:#020617; border:1px solid var(--border);
+  border-radius:12px; padding:8px; display:flex; justify-content:center;
 }
+canvas{ display:block; max-width:100%; height:auto; border-radius:8px }
 
-/* Badge */
-.badge{ font-size:12px; padding:4px 8px; border-radius:999px; background:#ecfeff; color:#0e7490; border:1px solid #cffafe; }
+/* AI FIELDS */
+.ai-fields textarea{ height:76px; resize:vertical }
+
+/* FOOTER HELP */
+.pp-footer-actions{
+  display:flex; gap:12px; justify-content:center; margin-top:18px; color:#cbd5e1;
+}
