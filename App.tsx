@@ -29,7 +29,7 @@ export default function App(){
   const [overlayOn, setOverlayOn] = useState(false);
   const [overlayText, setOverlayText] = useState("Your catchy title here");
 
-  const [brand, setBrand] = useState({ primary:"#6366f1", accent:"#06b6d4", text:"#f1f5f9" });
+  const [brand, setBrand] = useState({ primary:"#5459D4", accent:"#74D6D8", text:"#1C1E45" });
   const [font, setFont] = useState("Poppins");
 
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
@@ -44,6 +44,7 @@ export default function App(){
   const [title, setTitle] = useState("");
   const [desc, setDesc]   = useState("");
   const [tags, setTags]   = useState("");
+  const [businessNiche, setBusinessNiche] = useState("digital products, stickers, graphics");
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string|null>(null);
 
@@ -202,7 +203,7 @@ export default function App(){
         setTemplate("bottom");
         setOverlayOn(true);
         setOverlayText("Your catchy title here");
-        setBrand({ primary: "#6366f1", accent: "#06b6d4", text: "#f1f5f9" });
+        setBrand({ primary: "#5459D4", accent: "#74D6D8", text: "#1C1E45" });
         setFont("Poppins");
         setIncludeLogo(true);
         setLogoAnchor("bottom-right");
@@ -219,35 +220,105 @@ export default function App(){
       });
       const base64Files = await Promise.all(filePromises);
 
-      console.log('Sending request to /api/generate with:', {
-        filesCount: base64Files.length,
-        isVideo,
+      console.log('Calling Gemini API directly with:', {
         brandPrimary: brand.primary,
         brandAccent: brand.accent,
         overlayText
       });
 
-      const response = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          files: base64Files,
-          isVideo,
-          brandPrimary: brand.primary,
-          brandAccent: brand.accent,
-          overlayText
-        })
-      });
-
-      console.log('Response status:', response.status);
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('API Error:', errorText);
-        throw new Error(`Generation failed: ${response.status} ${errorText}`);
+      // Call Gemini API directly from frontend
+      const geminiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
+      if (!geminiKey) {
+        throw new Error('Gemini API key not configured. Please check your .env file.');
       }
 
-      const data = await response.json();
-      console.log('Received data:', data);
+      const prompt = `🎯 HIGH-CONVERSION DIGITAL PRODUCT CONTENT GENERATOR
+
+BUSINESS: ${businessNiche}
+
+📸 IMAGE ANALYSIS: Analyze this image and create conversion-optimized Pinterest content that will drive sales of digital downloads.
+
+CRITICAL REQUIREMENTS:
+✅ DIGITAL PRODUCTS FOCUS: Stickers, graphics, printables, digital files
+✅ SEO OPTIMIZATION: Use high-search-volume Pinterest keywords
+✅ CONVERSION-DRIVEN: Include strong CTAs and benefit-focused copy
+✅ IMAGE-AWARE: Base content on what you actually see in the image
+✅ SALES-ORIENTED: Highlight instant download, unlimited use, etc.
+
+CONTENT SPECIFICATIONS:
+🎯 TITLE (95 chars max): Include primary keyword + benefit + CTA
+📝 DESCRIPTION (480 chars max): Problem-solution-benefit structure + SEO keywords
+🏷️ TAGS (12 max): Mix trending + specific + long-tail keywords
+
+HIGH-CONVERTING STRUCTURE:
+1. HOOK: Attention-grabbing opening based on image
+2. PROBLEM: Address pain point (need for digital decor/stickers)
+3. SOLUTION: Your digital product as the answer
+4. BENEFITS: Instant download, unlimited use, high quality
+5. CTA: Clear call-to-action for purchase
+
+Return ONLY valid JSON:
+{
+ "title": "SEO Title: Primary Keyword + Key Benefit + CTA",
+ "description": "Hook + Problem + Solution + Benefits + Strong CTA + SEO Keywords",
+ "tags": ["primary-keyword", "digital-downloads", "instant-access", "high-quality", "unlimited-use", "trending-keyword", "specific-to-image", "conversion-focused"]
+}
+
+🎨 BRANDING: Primary=${brand.primary}, Accent=${brand.accent}, Overlay="${overlayText}"`;
+
+      // Prepare the request with image data for Gemini Vision
+      const requestBody = {
+        contents: [{
+          parts: [
+            { text: prompt },
+            {
+              inline_data: {
+                mime_type: base64Files[0].includes('data:image/png') ? 'image/png' :
+                          base64Files[0].includes('data:image/jpeg') ? 'image/jpeg' :
+                          base64Files[0].includes('data:image/jpg') ? 'image/jpeg' : 'image/png',
+                data: base64Files[0].split(',')[1] // Remove data URL prefix
+              }
+            }
+          ]
+        }],
+        generationConfig: { temperature: 0.7 },
+        safetySettings: []
+      };
+
+      console.log('Sending request with image to Gemini Vision API');
+      const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(requestBody)
+      });
+
+      console.log('Gemini response status:', geminiResponse.status);
+      if (!geminiResponse.ok) {
+        const errorData = await geminiResponse.json();
+        console.error('Gemini API error:', errorData);
+        throw new Error(`Gemini API error: ${geminiResponse.status}`);
+      }
+
+      const geminiData = await geminiResponse.json();
+      console.log('Gemini response data:', geminiData);
+
+      const text = geminiData?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("\n") ||
+                  geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+
+      const jsonMatch = text.match(/\{[\s\S]*\}/);
+      const parsedData = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+
+      const tags = Array.isArray(parsedData.tags) ? parsedData.tags :
+                  String(parsedData.tags || "").split(",").map((t: string) => t.trim()).filter(Boolean);
+
+      const data = {
+        title: String(parsedData.title || "Eye-catching Pinterest Pin Title").slice(0, 95),
+        description: String(parsedData.description || "A concise, keyword-rich description tailored for Pinterest search and saves.").slice(0, 480),
+        tags: tags.slice(0, 12),
+        imageBase64: base64Files[0] // Return the first image
+      };
+
+      console.log('Processed data:', data);
       setTitle(data.title);
       setDesc(data.description);
       setTags(data.tags.join(", "));
@@ -286,6 +357,17 @@ export default function App(){
           <div className="pp-sub">Auto-resizes to 1000×1500 (2:3). {proBadge}</div>
 
           <div className="pp-row">
+            <label>Your Business Niche</label>
+            <input
+              type="text"
+              value={businessNiche}
+              onChange={e=>setBusinessNiche(e.target.value)}
+              placeholder="e.g., digital stickers, Halloween decor, graphic design"
+            />
+            <div className="pp-sub">Helps AI generate content specific to your business</div>
+          </div>
+
+          <div className="pp-row">
             <label>Upload Images/Videos</label>
             <input type="file" accept="image/*,video/*" multiple onChange={e=>onFiles(e.target.files)} />
             <div className="pp-sub">Upload up to 3 images or 1 video (max 10MB each)</div>
@@ -318,29 +400,58 @@ export default function App(){
             </div>
           )}
 
+          {/* Template Controls - Available for both free and pro */}
+          <div className="pp-row">
+            <label>Template</label>
+            <select value={template} onChange={e=>setTemplate(e.target.value as TemplateKind)}>
+              <option value="off">Off</option>
+              <option value="bottom">Bottom Bar</option>
+              <option value="side">Side Tag</option>
+              <option value="diagonal">Diagonal Ribbon</option>
+            </select>
+          </div>
+
+          <div className="pp-check">
+            <input type="checkbox" checked={overlayOn} onChange={e=>setOverlayOn(e.target.checked)} />
+            <span>Enable overlay text</span>
+          </div>
+          {overlayOn && (
+            <div className="pp-row">
+              <label>Overlay Text</label>
+              <input value={overlayText} onChange={e=>setOverlayText(e.target.value)} />
+            </div>
+          )}
+
+          {/* Logo Upload - Available for both free and pro */}
+          <h3 style={{marginTop:18, marginBottom: 12, color: 'var(--text)'}}>Logo</h3>
+          <div className="pp-row">
+            <label>Upload Logo</label>
+            <input type="file" accept="image/*" onChange={e=>onLogo(e.target.files?.[0]||null)}/>
+          </div>
+          <div className="pp-check">
+            <input type="checkbox" checked={includeLogo} onChange={e=>setIncludeLogo(e.target.checked)} />
+            <span>Include logo on the image</span>
+          </div>
+          <div className="pp-row">
+            <label>Position</label>
+            <select value={logoAnchor} onChange={e=>setLogoAnchor(e.target.value as LogoAnchor)}>
+              <option value="top-left">Top Left</option><option value="top-center">Top Center</option><option value="top-right">Top Right</option>
+              <option value="middle-left">Middle Left</option><option value="center">Center</option><option value="middle-right">Middle Right</option>
+              <option value="bottom-left">Bottom Left</option><option value="bottom-center">Bottom Center</option><option value="bottom-right">Bottom Right</option>
+            </select>
+          </div>
+          <div className="pp-row">
+            <label>Logo Size</label>
+            <input type="range" min="0.08" max="0.40" step="0.01" value={logoScale} onChange={e=>setLogoScale(parseFloat(e.target.value))}/>
+          </div>
+          <div className="pp-row">
+            <label>Offset X / Y</label>
+            <input type="range" min="-150" max="150" value={logoOffset.x} onChange={e=>setLogoOffset(o=>({...o, x:parseInt(e.target.value)}))}/>
+            <input type="range" min="-150" max="150" value={logoOffset.y} onChange={e=>setLogoOffset(o=>({...o, y:parseInt(e.target.value)}))}/>
+          </div>
+
           {isPro && (
             <>
-              <div className="pp-row">
-                <label>Template</label>
-                <select value={template} onChange={e=>setTemplate(e.target.value as TemplateKind)}>
-                  <option value="off">Off</option>
-                  <option value="bottom">Bottom Bar</option>
-                  <option value="side">Side Tag</option>
-                  <option value="diagonal">Diagonal Ribbon</option>
-                </select>
-              </div>
-
-              <div className="pp-check">
-                <input type="checkbox" checked={overlayOn} onChange={e=>setOverlayOn(e.target.checked)} />
-                <span>Enable overlay text</span>
-              </div>
-              {overlayOn && (
-                <div className="pp-row">
-                  <label>Overlay Text</label>
-                  <input value={overlayText} onChange={e=>setOverlayText(e.target.value)} />
-                </div>
-              )}
-
               <div className="pp-row">
                 <label>Fit Mode</label>
                 <select value={fit} onChange={e=>setFit(e.target.value as FitMode)}>
@@ -370,32 +481,74 @@ export default function App(){
                   <option>Poppins</option><option>Inter</option><option>Montserrat</option><option>Nunito</option>
                 </select>
               </div>
+            </>
+          )}
 
-              <h3 style={{marginTop:18}}>Logo</h3>
+          {isPro && (
+            <>
+              <h3 style={{marginTop: 24, marginBottom: 16, color: 'var(--text)'}}>
+                📌 Pinterest Publishing
+              </h3>
+
               <div className="pp-row">
-                <label>Upload Logo</label>
-                <input type="file" accept="image/*" onChange={e=>onLogo(e.target.files?.[0]||null)}/>
+                <label>Pinterest Account</label>
+                <button
+                  className="pp-btn"
+                  style={{background: '#E60023'}}
+                  onClick={() => alert('Pinterest integration will be available once API posting/scheduling is approved. For now, focus on content optimization!')}
+                >
+                  🔗 Connect Pinterest Account
+                </button>
+                <div className="pp-sub">Connect to post and schedule pins automatically (available after API upgrade)</div>
               </div>
-              <div className="pp-check">
-                <input type="checkbox" checked={includeLogo} onChange={e=>setIncludeLogo(e.target.checked)} />
-                <span>Include logo on the image</span>
-              </div>
+
               <div className="pp-row">
-                <label>Position</label>
-                <select value={logoAnchor} onChange={e=>setLogoAnchor(e.target.value as LogoAnchor)}>
-                  <option value="top-left">Top Left</option><option value="top-center">Top Center</option><option value="top-right">Top Right</option>
-                  <option value="middle-left">Middle Left</option><option value="center">Center</option><option value="middle-right">Middle Right</option>
-                  <option value="bottom-left">Bottom Left</option><option value="bottom-center">Bottom Center</option><option value="bottom-right">Bottom Right</option>
+                <label>Pin Purpose/Niche</label>
+                <select>
+                  <option>Digital Products</option>
+                  <option>Business/Branding</option>
+                  <option>Educational Content</option>
+                  <option>Promotional</option>
+                  <option>Seasonal/Holiday</option>
+                  <option>Lifestyle</option>
+                  <option>DIY/Crafts</option>
+                  <option>Custom</option>
                 </select>
+                <div className="pp-sub">Helps optimize content for specific Pinterest audience</div>
               </div>
+
               <div className="pp-row">
-                <label>Logo Size</label>
-                <input type="range" min="0.08" max="0.40" step="0.01" value={logoScale} onChange={e=>setLogoScale(parseFloat(e.target.value))}/>
+                <label>Select Board</label>
+                <select disabled>
+                  <option>Connect Pinterest account first...</option>
+                </select>
+                <div className="pp-sub">Choose which Pinterest board to publish to</div>
               </div>
+
               <div className="pp-row">
-                <label>Offset X / Y</label>
-                <input type="range" min="-150" max="150" value={logoOffset.x} onChange={e=>setLogoOffset(o=>({...o, x:parseInt(e.target.value)}))}/>
-                <input type="range" min="-150" max="150" value={logoOffset.y} onChange={e=>setLogoOffset(o=>({...o, y:parseInt(e.target.value)}))}/>
+                <label>Publishing Options</label>
+                <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
+                  <label style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px'}}>
+                    <input type="radio" name="publish" defaultChecked />
+                    Post Immediately
+                  </label>
+                  <label style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px'}}>
+                    <input type="radio" name="publish" />
+                    Schedule for Later
+                  </label>
+                </div>
+              </div>
+
+              <div className="pp-row">
+                <label>Schedule Date/Time</label>
+                <input type="datetime-local" disabled />
+                <div className="pp-sub">Set when to publish this pin</div>
+              </div>
+
+              <div className="pp-row">
+                <label>Link Destination</label>
+                <input type="url" placeholder="https://your-shop.com/product" />
+                <div className="pp-sub">Where Pinterest users should go when they click your pin</div>
               </div>
             </>
           )}
