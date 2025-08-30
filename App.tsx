@@ -219,6 +219,14 @@ export default function App(){
       });
       const base64Files = await Promise.all(filePromises);
 
+      console.log('Sending request to /api/generate with:', {
+        filesCount: base64Files.length,
+        isVideo,
+        brandPrimary: brand.primary,
+        brandAccent: brand.accent,
+        overlayText
+      });
+
       const response = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -231,9 +239,15 @@ export default function App(){
         })
       });
 
-      if (!response.ok) throw new Error('Generation failed');
+      console.log('Response status:', response.status);
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('API Error:', errorText);
+        throw new Error(`Generation failed: ${response.status} ${errorText}`);
+      }
 
       const data = await response.json();
+      console.log('Received data:', data);
       setTitle(data.title);
       setDesc(data.description);
       setTags(data.tags.join(", "));
@@ -276,6 +290,20 @@ export default function App(){
             <input type="file" accept="image/*,video/*" multiple onChange={e=>onFiles(e.target.files)} />
             <div className="pp-sub">Upload up to 3 images or 1 video (max 10MB each)</div>
           </div>
+
+          {!isPro && (
+            <div className="pp-check" style={{marginTop: '8px'}}>
+              <input
+                type="checkbox"
+                checked={overlayOn}
+                onChange={e=>setOverlayOn(e.target.checked)}
+                id="overlay-toggle"
+              />
+              <label htmlFor="overlay-toggle" style={{cursor: 'pointer', marginLeft: '8px'}}>
+                Include overlay text on generated pins
+              </label>
+            </div>
+          )}
 
           {uploadedFiles.length > 0 && (
             <div className="pp-row">

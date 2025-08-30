@@ -36,11 +36,13 @@ export default async function handler(req: any, res: any) {
     const imageData = files[0];
 
     // Generate copy
+    console.log('Generating copy with:', { brandPrimary, brandAccent, overlayText });
     const copy = await generatePinCopy({
       brandPrimary,
       brandAccent,
       overlayText
     });
+    console.log('Generated copy:', copy);
 
     // For now, return the original image (client will apply branding)
     const brandedImage = imageData;
