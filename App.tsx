@@ -53,6 +53,60 @@ export default function App(){
 
   const cvsRef = useRef<HTMLCanvasElement|null>(null);
 
+  // Load saved settings on startup
+  useEffect(() => {
+    const savedSettings = localStorage.getItem('pinPilot_settings');
+    if (savedSettings) {
+      try {
+        const settings = JSON.parse(savedSettings);
+        if (settings.brand) setBrand(settings.brand);
+        if (settings.font) setFont(settings.font);
+        if (settings.template) setTemplate(settings.template);
+        if (settings.overlayOn !== undefined) setOverlayOn(settings.overlayOn);
+        if (settings.overlayText) setOverlayText(settings.overlayText);
+        if (settings.businessNiche) setBusinessNiche(settings.businessNiche);
+        if (settings.fit) setFit(settings.fit);
+        if (settings.includeLogo !== undefined) setIncludeLogo(settings.includeLogo);
+        if (settings.logoAnchor) setLogoAnchor(settings.logoAnchor);
+        if (settings.logoScale) setLogoScale(settings.logoScale);
+        if (settings.logoOffset) setLogoOffset(settings.logoOffset);
+      } catch (e) {
+        console.error('Error loading saved settings:', e);
+      }
+    }
+
+    // Check for saved Pinterest tokens
+    const savedTokens = localStorage.getItem('pinterest_tokens');
+    if (savedTokens) {
+      try {
+        const tokens = JSON.parse(savedTokens);
+        if (tokens.access_token) {
+          setApiBanner({kind: "info", text: "Pinterest account connected! Enhanced optimization active."});
+        }
+      } catch (e) {
+        console.error('Error loading Pinterest tokens:', e);
+      }
+    }
+  }, []);
+
+  // Save settings whenever they change
+  useEffect(() => {
+    const settings = {
+      brand,
+      font,
+      template,
+      overlayOn,
+      overlayText,
+      businessNiche,
+      fit,
+      includeLogo,
+      logoAnchor,
+      logoScale,
+      logoOffset
+    };
+    localStorage.setItem('pinPilot_settings', JSON.stringify(settings));
+  }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset]);
+
   // Init API status banner (missing/invalid key clarity)
   useEffect(()=>{
     const s = geminiStatus();
@@ -225,7 +279,10 @@ export default function App(){
     try{
       // For free tier, apply default branding automatically
       if (!isPro) {
-        setTemplate("bottom");
+        // Only set template if user hasn't chosen one (template is still "off")
+        if (template === "off") {
+          setTemplate("bottom");
+        }
         setOverlayOn(true);
         setOverlayText("Your catchy title here");
         setBrand({ primary: "#5459D4", accent: "#74D6D8", text: "#1C1E45" });
@@ -478,39 +535,35 @@ Return ONLY valid JSON:
             <input type="range" min="-150" max="150" value={logoOffset.y} onChange={e=>setLogoOffset(o=>({...o, y:parseInt(e.target.value)}))}/>
           </div>
 
-          {isPro && (
-            <>
-              <div className="pp-row">
-                <label>Fit Mode</label>
-                <select value={fit} onChange={e=>setFit(e.target.value as FitMode)}>
-                  <option value="contain">Contain (no crop)</option>
-                  <option value="cover">Cover (smart crop)</option>
-                </select>
-              </div>
+          <div className="pp-row">
+            <label>Fit Mode</label>
+            <select value={fit} onChange={e=>setFit(e.target.value as FitMode)}>
+              <option value="contain">Contain (no crop)</option>
+              <option value="cover">Cover (smart crop)</option>
+            </select>
+          </div>
 
-              <div className="pp-row">
-                <label>Brand Color</label>
-                <input value={brand.primary} onChange={e=>setBrand(b=>({...b, primary:hex(e.target.value,b.primary)}))}/>
-                <input type="color" value={brand.primary} onChange={e=>setBrand(b=>({...b,primary:e.target.value}))}/>
-              </div>
-              <div className="pp-row">
-                <label>Accent Color</label>
-                <input value={brand.accent} onChange={e=>setBrand(b=>({...b, accent:hex(e.target.value,b.accent)}))}/>
-                <input type="color" value={brand.accent} onChange={e=>setBrand(b=>({...b,accent:e.target.value}))}/>
-              </div>
-              <div className="pp-row">
-                <label>Text Color</label>
-                <input value={brand.text} onChange={e=>setBrand(b=>({...b, text:hex(e.target.value,b.text)}))}/>
-                <input type="color" value={brand.text} onChange={e=>setBrand(b=>({...b,text:e.target.value}))}/>
-              </div>
-              <div className="pp-row">
-                <label>Font</label>
-                <select value={font} onChange={e=>setFont(e.target.value)}>
-                  <option>Poppins</option><option>Inter</option><option>Montserrat</option><option>Nunito</option>
-                </select>
-              </div>
-            </>
-          )}
+          <div className="pp-row">
+            <label>Brand Color</label>
+            <input value={brand.primary} onChange={e=>setBrand(b=>({...b, primary:hex(e.target.value,b.primary)}))}/>
+            <input type="color" value={brand.primary} onChange={e=>setBrand(b=>({...b,primary:e.target.value}))}/>
+          </div>
+          <div className="pp-row">
+            <label>Accent Color</label>
+            <input value={brand.accent} onChange={e=>setBrand(b=>({...b, accent:hex(e.target.value,b.accent)}))}/>
+            <input type="color" value={brand.accent} onChange={e=>setBrand(b=>({...b,accent:e.target.value}))}/>
+          </div>
+          <div className="pp-row">
+            <label>Text Color</label>
+            <input value={brand.text} onChange={e=>setBrand(b=>({...b, text:hex(e.target.value,b.text)}))}/>
+            <input type="color" value={brand.text} onChange={e=>setBrand(b=>({...b,text:e.target.value}))}/>
+          </div>
+          <div className="pp-row">
+            <label>Font</label>
+            <select value={font} onChange={e=>setFont(e.target.value)}>
+              <option>Poppins</option><option>Inter</option><option>Montserrat</option><option>Nunito</option>
+            </select>
+          </div>
 
           {isPro && (
             <>
@@ -629,7 +682,13 @@ Return ONLY valid JSON:
                 >
                   🔗 Connect Pinterest Account (Free)
                 </button>
-                <div className="pp-sub">Connect your Pinterest account to get AI-optimized content based on current trends and your account data. No cost to you - helps improve free tier results!</div>
+                <div className="pp-sub">
+                  <strong>Benefits of connecting:</strong><br/>
+                  ✅ AI analyzes your Pinterest trends for better content<br/>
+                  ✅ Smarter keyword suggestions based on what performs<br/>
+                  ✅ Personalized optimization for your audience<br/>
+                  ✅ No cost to you - enhances free tier results!
+                </div>
               </div>
             </div>
           )}
