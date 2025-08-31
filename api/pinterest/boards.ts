@@ -1,7 +1,13 @@
 export default async function handler(req: any, res: any) {
   try {
-    const cookie = req.headers.cookie || "";
-    const at = cookie.split(";").map((c: string) => c.trim()).find((c: string) => c.startsWith("pp_at="))?.split("=")[1];
+    // Try cookie first (OAuth), then environment variable (direct token)
+    let at = req.headers.cookie?.split(";").map((c: string) => c.trim()).find((c: string) => c.startsWith("pp_at="))?.split("=")[1];
+
+    // If no OAuth token, try direct access token from environment
+    if (!at) {
+      at = process.env.PINTEREST_ACCESS_TOKEN;
+    }
+
     if (!at) return res.status(401).json({ ok: false, error: "No access token" });
 
     const r = await fetch("https://api.pinterest.com/v5/boards?page_size=10", {

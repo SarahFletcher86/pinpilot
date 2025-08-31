@@ -84,7 +84,7 @@ export default function App(){
       }
     }
 
-    // Check for saved Pinterest tokens
+    // Check for saved Pinterest tokens or direct access token
     const savedTokens = localStorage.getItem('pinterest_tokens');
     if (savedTokens) {
       try {
@@ -99,6 +99,9 @@ export default function App(){
       } catch (e) {
         console.error('Error loading Pinterest tokens:', e);
       }
+    } else {
+      // If no OAuth tokens, try to fetch boards with direct access token
+      fetchPinterestBoards();
     }
   }, []);
 
