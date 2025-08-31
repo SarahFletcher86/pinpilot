@@ -8,7 +8,10 @@ export default async function handler(req: any, res: any) {
       headers: { Authorization: `Bearer ${at}` },
     });
     const data = await r.json();
-    if (!r.ok) return res.status(r.status).json({ ok: false, error: data });
+    if (!r.ok) {
+      console.error('Pinterest boards API error:', data);
+      return res.status(r.status).json({ ok: false, error: data.message || data.error_description || 'Failed to fetch boards' });
+    }
 
     res.status(200).json({ ok: true, boards: data.items || data });
   } catch (e: any) {

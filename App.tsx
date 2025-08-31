@@ -35,6 +35,8 @@ export default function App(){
   const [uploadedFiles, setUploadedFiles] = useState<File[]>([]);
   const [srcImg, setSrcImg] = useState<HTMLImageElement|null>(null);
   const [logoImg, setLogoImg] = useState<HTMLImageElement|null>(null);
+  const [uploadedImageData, setUploadedImageData] = useState<string|null>(null);
+  const [uploadedLogoData, setUploadedLogoData] = useState<string|null>(null);
   const [isVideo, setIsVideo] = useState(false);
   const [includeLogo, setIncludeLogo] = useState(true);
   const [logoAnchor, setLogoAnchor] = useState<LogoAnchor>("bottom-right");
@@ -73,6 +75,18 @@ export default function App(){
         if (settings.logoScale) setLogoScale(settings.logoScale);
         if (settings.logoOffset) setLogoOffset(settings.logoOffset);
         if (settings.selectedBoard) setSelectedBoard(settings.selectedBoard);
+        if (settings.uploadedImageData) {
+          setUploadedImageData(settings.uploadedImageData);
+          const img = new Image();
+          img.onload = () => setSrcImg(img);
+          img.src = settings.uploadedImageData;
+        }
+        if (settings.uploadedLogoData) {
+          setUploadedLogoData(settings.uploadedLogoData);
+          const img = new Image();
+          img.onload = () => setLogoImg(img);
+          img.src = settings.uploadedLogoData;
+        }
       } catch (e) {
         console.error('Error loading saved settings:', e);
       }
@@ -84,6 +98,8 @@ export default function App(){
       try {
         const tokens = JSON.parse(savedTokens);
         if (tokens.access_token) {
+          // Set cookie for API access
+          document.cookie = `pp_at=${tokens.access_token}; Path=/; Max-Age=86400; SameSite=Lax`;
           setApiBanner({kind: "info", text: "Pinterest account connected! Enhanced optimization active."});
           // Fetch boards if we have tokens
           fetchPinterestBoards();
@@ -114,6 +130,12 @@ export default function App(){
 
           // Store tokens
           localStorage.setItem('pinterest_tokens', JSON.stringify(tokens));
+
+          // Also set cookie for API access
+          if (tokens.access_token) {
+            document.cookie = `pp_at=${tokens.access_token}; Path=/; Max-Age=86400; SameSite=Lax`;
+          }
+
           setApiBanner({kind: "info", text: "Pinterest account connected successfully! Enhanced optimization is now active."});
 
           // Fetch boards
@@ -152,10 +174,12 @@ export default function App(){
       logoAnchor,
       logoScale,
       logoOffset,
-      selectedBoard
+      selectedBoard,
+      uploadedImageData,
+      uploadedLogoData
     };
     localStorage.setItem('pinPilot_settings', JSON.stringify(settings));
-  }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset, selectedBoard]);
+  }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset, selectedBoard, uploadedImageData, uploadedLogoData]);
 
   // Init API status banner (missing/invalid key clarity)
   useEffect(()=>{
@@ -170,25 +194,75 @@ export default function App(){
     fr.readAsDataURL(file);
   };
 
-  const extractVideoThumbnail = (file:File, cb:(img:HTMLImageElement)=>void)=>{
-    const video = document.createElement('video');
-    video.preload = 'metadata';
-    video.onloadedmetadata = ()=>{
-      video.currentTime = 1; // Seek to 1 second
-    };
-    video.onseeked = ()=>{
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const ctx = canvas.getContext('2d');
-      if(ctx) {
-        ctx.drawImage(video, 0, 0);
-        const img = new Image();
-        img.onload = ()=>cb(img);
-        img.src = canvas.toDataURL('image/png');
+  const readImageWithData = (file:File, cb:(img:HTMLImageElement, dataUrl:string)=>void)=>{
+    const fr = new FileReader();
+    fr.onload = ()=>{
+      try {
+        const dataUrl = fr.result as string;
+        const i = new Image();
+        i.onload = ()=>cb(i, dataUrl);
+        i.onerror = ()=>{
+          console.error('Failed to load image');
+          // Still call callback with null image to prevent crash
+          cb(null as any, dataUrl);
+        };
+        i.src = dataUrl;
+      } catch (e) {
+        console.error('Error reading image file:', e);
       }
     };
-    video.src = URL.createObjectURL(file);
+    fr.onerror = ()=>{
+      console.error('Failed to read file');
+    };
+    fr.readAsDataURL(file);
+  };
+
+  const extractVideoThumbnail = (file:File, cb:(img:HTMLImageElement)=>void)=>{
+    try {
+      const video = document.createElement('video');
+      video.preload = 'metadata';
+      video.onloadedmetadata = ()=>{
+        try {
+          video.currentTime = 1; // Seek to 1 second
+        } catch (e) {
+          console.error('Error seeking video:', e);
+          // Try with current time 0
+          video.currentTime = 0;
+        }
+      };
+      video.onseeked = ()=>{
+        try {
+          const canvas = document.createElement('canvas');
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          const ctx = canvas.getContext('2d');
+          if(ctx) {
+            ctx.drawImage(video, 0, 0);
+            const img = new Image();
+            img.onload = ()=>cb(img);
+            img.onerror = ()=>{
+              console.error('Failed to create video thumbnail image');
+              cb(null as any);
+            };
+            img.src = canvas.toDataURL('image/png');
+          } else {
+            console.error('Failed to get canvas context');
+            cb(null as any);
+          }
+        } catch (e) {
+          console.error('Error creating video thumbnail:', e);
+          cb(null as any);
+        }
+      };
+      video.onerror = ()=>{
+        console.error('Failed to load video file');
+        cb(null as any);
+      };
+      video.src = URL.createObjectURL(file);
+    } catch (e) {
+      console.error('Error in extractVideoThumbnail:', e);
+      cb(null as any);
+    }
   };
 
   // draw canvas
@@ -289,14 +363,65 @@ export default function App(){
     // Process first file for preview
     const firstFile = fileArray[0];
     if(firstFile.type.startsWith('video/')) {
-      extractVideoThumbnail(firstFile, setSrcImg);
+      extractVideoThumbnail(firstFile, (img) => {
+        if (img) {
+          setSrcImg(img);
+          // For videos, we'll store the thumbnail
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            const ctx = canvas.getContext('2d');
+            if(ctx) {
+              ctx.drawImage(img, 0, 0);
+              const dataUrl = canvas.toDataURL('image/png');
+              setUploadedImageData(dataUrl);
+            }
+          } catch (e) {
+            console.error('Error creating video thumbnail data URL:', e);
+          }
+        } else {
+          console.error('Failed to extract video thumbnail');
+          setApiBanner({kind: "error", text: "Failed to process video file. Please try a different file."});
+        }
+      });
     } else {
-      readImage(firstFile, setSrcImg);
+      readImageWithData(firstFile, (img, dataUrl) => {
+        if (img) {
+          setSrcImg(img);
+          setUploadedImageData(dataUrl);
+        } else {
+          console.error('Failed to load uploaded image');
+          setApiBanner({kind: "error", text: "Failed to load image. Please try a different file."});
+        }
+      });
     }
   };
 
-  const onMain = (f:File|null)=>{ if(!f) return; readImage(f, setSrcImg); };
-  const onLogo = (f:File|null)=>{ if(!f) return; readImage(f, setLogoImg); };
+  const onMain = (f:File|null)=>{
+    if(!f) return;
+    readImageWithData(f, (img, dataUrl) => {
+      if (img) {
+        setSrcImg(img);
+        setUploadedImageData(dataUrl);
+      } else {
+        console.error('Failed to load main image');
+        setApiBanner({kind: "error", text: "Failed to load image. Please try a different file."});
+      }
+    });
+  };
+  const onLogo = (f:File|null)=>{
+    if(!f) return;
+    readImageWithData(f, (img, dataUrl) => {
+      if (img) {
+        setLogoImg(img);
+        setUploadedLogoData(dataUrl);
+      } else {
+        console.error('Failed to load logo image');
+        setApiBanner({kind: "error", text: "Failed to load logo. Please try a different file."});
+      }
+    });
+  };
 
   // Fetch Pinterest boards
   const fetchPinterestBoards = async () => {

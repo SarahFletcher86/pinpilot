@@ -20,6 +20,13 @@ export default async function handler(req: any, res: any) {
     const data = await r.json();
     const pretty = JSON.stringify(data, null, 2);
 
+    // Check if the token exchange failed
+    if (!r.ok || data.error) {
+      console.error('Token exchange failed:', data);
+      res.status(500).send(html(`Token exchange failed: ${data.error_description || data.error || 'Unknown error'}\n\n${pretty}`));
+      return;
+    }
+
     // Optionally, bounce back to your front-end with tokens in hash (not query)
     const base = process.env.APP_BASE_URL || `https://${req.headers.host}`;
     const redirect = `${base}/#pinterest_oauth=${encodeURIComponent(Buffer.from(pretty).toString('base64'))}`;
