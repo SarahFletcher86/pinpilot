@@ -11,6 +11,7 @@ export default async function handler(req: any, res: any) {
     const { code, state } = req.query || {};
     if (!code) { res.status(400).send(html('Missing ?code in callback URL')); return; }
 
+    // Use the configured redirect URI (production for Vercel, localhost for local)
     const redirect_uri = process.env.PINTEREST_REDIRECT_URI!;
     const r = await fetch(`${req.headers['x-forwarded-proto'] ?? 'https'}://${req.headers.host}/api/auth/generate`, {
       method: 'POST',

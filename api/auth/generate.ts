@@ -5,13 +5,34 @@ export default async function handler(req: any, res: any) {
       res.status(405).json({ message: 'Method Not Allowed' }); return;
     }
     const { code, redirect_uri } = req.body || {};
-    if (!code || !redirect_uri) {
-      res.status(400).json({ message: 'Missing code or redirect_uri' }); return;
+    if (!code) {
+      res.status(400).json({ message: 'Missing authorization code' }); return;
     }
 
-    const client_id = process.env.PINTEREST_CLIENT_ID!;
-    const client_secret = process.env.PINTEREST_CLIENT_SECRET!;
+    // Use the configured redirect URI
+    const final_redirect_uri = redirect_uri || process.env.PINTEREST_REDIRECT_URI;
+    if (!final_redirect_uri) {
+      res.status(400).json({ message: 'Missing redirect_uri configuration' }); return;
+    }
+
+    const client_id = process.env.PINTEREST_CLIENT_ID;
+    const client_secret = process.env.PINTEREST_CLIENT_SECRET;
+
+    if (!client_id || !client_secret) {
+      console.error('Missing Pinterest environment variables');
+      res.status(500).json({ message: 'Pinterest API not configured' });
+      return;
+    }
+
     const tokenUrl = 'https://api.pinterest.com/v5/oauth/token';
+
+    console.log('Pinterest token exchange request:', {
+      tokenUrl,
+      code: code.substring(0, 10) + '...', // Don't log full code
+      redirect_uri: final_redirect_uri,
+      client_id: client_id.substring(0, 10) + '...', // Don't log full client_id
+      has_client_secret: !!client_secret
+    });
 
     const r = await fetch(tokenUrl, {
       method: 'POST',
@@ -19,7 +40,7 @@ export default async function handler(req: any, res: any) {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         code,
-        redirect_uri,
+        redirect_uri: final_redirect_uri,
         client_id,
         client_secret
       })

@@ -29,6 +29,9 @@ export default async function handler(req: any, res: any) {
     return;
   }
 
+  // Use production URI for Vercel deployment, localhost for local development
+  const demoRedirectUri = process.env.PINTEREST_REDIRECT_URI;
+
   // CSRF protection: store a random state in a cookie and pass it to Pinterest
   const state = randomState();
   res.setHeader(
@@ -41,7 +44,7 @@ export default async function handler(req: any, res: any) {
     new URLSearchParams({
       response_type: "code",
       client_id: clientId,
-      redirect_uri: redirectUri,
+      redirect_uri: demoRedirectUri,
       scope: SCOPES,
       state,
     }).toString();
