@@ -3,10 +3,10 @@
 type GenArgs = { brandPrimary: string; brandAccent: string; overlayText?: string; };
 type GenResult = { title: string; description: string; tags: string[] };
 
-const KEY = import.meta.env.VITE_GEMINI_API_KEY as string | undefined;
+const KEY = process.env.GEMINI_API_KEY as string | undefined;
 
 export function geminiStatus(): {ok:boolean; kind:"info"|"error"; message:string}{
-  if (!KEY) return { ok:false, kind:"error", message:"Gemini API key not set. Add VITE_GEMINI_API_KEY in Vercel → Settings → Environment Variables and redeploy." };
+  if (!KEY) return { ok:false, kind:"error", message:"Gemini API key not set on server. Add GEMINI_API_KEY in your server environment variables." };
   return { ok:true, kind:"info", message:"" };
 }
 

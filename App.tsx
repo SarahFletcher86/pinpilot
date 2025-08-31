@@ -120,13 +120,10 @@ export default function App(){
       setTimeout(() => {
         try {
           const encoded = hash.replace('#pinterest_oauth=', '');
-          console.log('Encoded token data:', encoded);
           const decodedUri = decodeURIComponent(encoded);
-          console.log('URL decoded:', decodedUri);
           const decoded = atob(decodedUri);
-          console.log('Base64 decoded:', decoded);
           const tokens = JSON.parse(decoded);
-          console.log('Pinterest OAuth tokens received:', tokens);
+          console.log('Pinterest OAuth tokens received successfully');
 
           // Store tokens
           localStorage.setItem('pinterest_tokens', JSON.stringify(tokens));
@@ -474,99 +471,30 @@ export default function App(){
         overlayText
       });
 
-      // Call Gemini API directly from frontend
-      const geminiKey = (import.meta as any).env.VITE_GEMINI_API_KEY;
-      if (!geminiKey) {
-        throw new Error('Gemini API key not configured. Please check your .env file.');
-      }
-
-      const prompt = `🎯 HIGH-CONVERSION DIGITAL PRODUCT CONTENT GENERATOR
-
-BUSINESS: ${businessNiche}
-
-📸 IMAGE ANALYSIS: Analyze this image and create conversion-optimized Pinterest content that will drive sales of digital downloads.
-
-CRITICAL REQUIREMENTS:
-✅ DIGITAL PRODUCTS FOCUS: Stickers, graphics, printables, digital files
-✅ SEO OPTIMIZATION: Use high-search-volume Pinterest keywords
-✅ CONVERSION-DRIVEN: Include strong CTAs and benefit-focused copy
-✅ IMAGE-AWARE: Base content on what you actually see in the image
-✅ SALES-ORIENTED: Highlight instant download, unlimited use, etc.
-
-CONTENT SPECIFICATIONS:
-🎯 TITLE (95 chars max): Include primary keyword + benefit + CTA
-📝 DESCRIPTION (480 chars max): Problem-solution-benefit structure + SEO keywords
-🏷️ TAGS (12 max): Mix trending + specific + long-tail keywords
-
-HIGH-CONVERTING STRUCTURE:
-1. HOOK: Attention-grabbing opening based on image
-2. PROBLEM: Address pain point (need for digital decor/stickers)
-3. SOLUTION: Your digital product as the answer
-4. BENEFITS: Instant download, unlimited use, high quality
-5. CTA: Clear call-to-action for purchase
-
-Return ONLY valid JSON:
-{
- "title": "SEO Title: Primary Keyword + Key Benefit + CTA",
- "description": "Hook + Problem + Solution + Benefits + Strong CTA + SEO Keywords",
- "tags": ["primary-keyword", "digital-downloads", "instant-access", "high-quality", "unlimited-use", "trending-keyword", "specific-to-image", "conversion-focused"]
-}
-
-🎨 BRANDING: Primary=${brand.primary}, Accent=${brand.accent}, Overlay="${overlayText}"`;
-
-      // Prepare the request with image data for Gemini Vision
-      const requestBody = {
-        contents: [{
-          parts: [
-            { text: prompt },
-            {
-              inline_data: {
-                mime_type: base64Files[0].includes('data:image/png') ? 'image/png' :
-                          base64Files[0].includes('data:image/jpeg') ? 'image/jpeg' :
-                          base64Files[0].includes('data:image/jpg') ? 'image/jpeg' : 'image/png',
-                data: base64Files[0].split(',')[1] // Remove data URL prefix
-              }
-            }
-          ]
-        }],
-        generationConfig: { temperature: 0.7 },
-        safetySettings: []
-      };
-
-      console.log('Sending request with image to Gemini Vision API');
-      const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`, {
+      // Call secure backend API for AI generation
+      console.log('Calling secure backend API for AI generation');
+      const backendResponse = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify({
+          files: base64Files,
+          isVideo,
+          brandPrimary: brand.primary,
+          brandAccent: brand.accent,
+          overlayText,
+          businessNiche
+        })
       });
 
-      console.log('Gemini response status:', geminiResponse.status);
-      if (!geminiResponse.ok) {
-        const errorData = await geminiResponse.json();
-        console.error('Gemini API error:', errorData);
-        throw new Error(`Gemini API error: ${geminiResponse.status}`);
+      console.log('Backend response status:', backendResponse.status);
+      if (!backendResponse.ok) {
+        const errorData = await backendResponse.json();
+        console.error('Backend API error:', errorData);
+        throw new Error(`AI generation failed: ${errorData.message || backendResponse.status}`);
       }
 
-      const geminiData = await geminiResponse.json();
-      console.log('Gemini response data:', geminiData);
-
-      const text = geminiData?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("\n") ||
-                  geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
-
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      const parsedData = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
-
-      const tags = Array.isArray(parsedData.tags) ? parsedData.tags :
-                  String(parsedData.tags || "").split(",").map((t: string) => t.trim()).filter(Boolean);
-
-      const data = {
-        title: String(parsedData.title || "Eye-catching Pinterest Pin Title").slice(0, 95),
-        description: String(parsedData.description || "A concise, keyword-rich description tailored for Pinterest search and saves.").slice(0, 480),
-        tags: tags.slice(0, 12),
-        imageBase64: base64Files[0] // Return the first image
-      };
-
-      console.log('Processed data:', data);
+      const data = await backendResponse.json();
+      console.log('Backend response data:', data);
       setTitle(data.title);
       setDesc(data.description);
       setTags(data.tags.join(", "));
