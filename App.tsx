@@ -193,10 +193,14 @@ export default function App(){
     fr.onload = ()=>{
       try {
         const dataUrl = fr.result as string;
+        console.log('FileReader loaded, dataUrl length:', dataUrl.length);
         const i = new Image();
-        i.onload = ()=>cb(i, dataUrl);
-        i.onerror = ()=>{
-          console.error('Failed to load image');
+        i.onload = ()=>{
+          console.log('Image loaded successfully, dimensions:', i.width, 'x', i.height);
+          cb(i, dataUrl);
+        };
+        i.onerror = (error)=>{
+          console.error('Failed to load image:', error);
           // Still call callback with null image to prevent crash
           cb(null as any, dataUrl);
         };
@@ -205,8 +209,8 @@ export default function App(){
         console.error('Error reading image file:', e);
       }
     };
-    fr.onerror = ()=>{
-      console.error('Failed to read file');
+    fr.onerror = (error)=>{
+      console.error('Failed to read file:', error);
     };
     fr.readAsDataURL(file);
   };
@@ -261,6 +265,7 @@ export default function App(){
 
   // draw canvas
   useEffect(()=>{
+    console.log('Canvas render triggered, srcImg exists:', !!srcImg);
     const c = cvsRef.current; if(!c) return;
     c.width = PIN.w; c.height = PIN.h;
     const ctx = c.getContext("2d"); if(!ctx) return;
@@ -271,6 +276,7 @@ export default function App(){
 
     // main image
     if (srcImg){
+      console.log('Drawing image, dimensions:', srcImg.width, 'x', srcImg.height);
       const sw=srcImg.width, sh=srcImg.height;
       const cr = PIN.w/PIN.h, ir = sw/sh;
 
@@ -288,6 +294,8 @@ export default function App(){
         else { const newH = sw/cr; sy=(sh-newH)/2; sh2=newH; }
         ctx.drawImage(srcImg, sx,sy,sw2,sh2, 0,0,PIN.w,PIN.h);
       }
+    } else {
+      console.log('No srcImg to draw, showing background only');
     }
 
     // template overlays
