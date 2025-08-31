@@ -75,20 +75,12 @@ export default function App(){
         if (settings.logoScale) setLogoScale(settings.logoScale);
         if (settings.logoOffset) setLogoOffset(settings.logoOffset);
         if (settings.selectedBoard) setSelectedBoard(settings.selectedBoard);
-        if (settings.uploadedImageData) {
-          setUploadedImageData(settings.uploadedImageData);
-          const img = new Image();
-          img.onload = () => setSrcImg(img);
-          img.src = settings.uploadedImageData;
-        }
-        if (settings.uploadedLogoData) {
-          setUploadedLogoData(settings.uploadedLogoData);
-          const img = new Image();
-          img.onload = () => setLogoImg(img);
-          img.src = settings.uploadedLogoData;
-        }
+        // Note: Image data is no longer persisted to prevent localStorage quota issues
+        // Images will need to be re-uploaded after page refresh
       } catch (e) {
         console.error('Error loading saved settings:', e);
+        // If there's an error (likely due to large image data), clear localStorage
+        localStorage.removeItem('pinPilot_settings');
       }
     }
 
@@ -157,7 +149,7 @@ export default function App(){
     }
   }, []);
 
-  // Save settings whenever they change
+  // Save settings whenever they change (exclude large image data to prevent localStorage quota exceeded)
   useEffect(() => {
     const settings = {
       brand,
@@ -171,12 +163,11 @@ export default function App(){
       logoAnchor,
       logoScale,
       logoOffset,
-      selectedBoard,
-      uploadedImageData,
-      uploadedLogoData
+      selectedBoard
+      // Note: uploadedImageData and uploadedLogoData are not saved to prevent localStorage quota issues
     };
     localStorage.setItem('pinPilot_settings', JSON.stringify(settings));
-  }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset, selectedBoard, uploadedImageData, uploadedLogoData]);
+  }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset, selectedBoard]);
 
   // API status is now handled server-side in the generate endpoint
   // No need to check from frontend since environment variables are server-only
