@@ -50,6 +50,8 @@ export default function App(){
 
   const [downloadUrl, setDownloadUrl] = useState("");
   const [apiBanner, setApiBanner] = useState<{kind:"info"|"error", text:string}|null>(null);
+  const [pinterestBoards, setPinterestBoards] = useState<any[]>([]);
+  const [selectedBoard, setSelectedBoard] = useState("");
 
   const cvsRef = useRef<HTMLCanvasElement|null>(null);
 
@@ -70,6 +72,7 @@ export default function App(){
         if (settings.logoAnchor) setLogoAnchor(settings.logoAnchor);
         if (settings.logoScale) setLogoScale(settings.logoScale);
         if (settings.logoOffset) setLogoOffset(settings.logoOffset);
+        if (settings.selectedBoard) setSelectedBoard(settings.selectedBoard);
       } catch (e) {
         console.error('Error loading saved settings:', e);
       }
@@ -82,10 +85,56 @@ export default function App(){
         const tokens = JSON.parse(savedTokens);
         if (tokens.access_token) {
           setApiBanner({kind: "info", text: "Pinterest account connected! Enhanced optimization active."});
+          // Fetch boards if we have tokens
+          fetchPinterestBoards();
         }
       } catch (e) {
         console.error('Error loading Pinterest tokens:', e);
       }
+    }
+  }, []);
+
+  // Handle Pinterest OAuth callback (with delay to avoid interfering with settings loading)
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash.startsWith('#pinterest_oauth=')) {
+      console.log('Pinterest OAuth callback detected, hash:', hash);
+
+      // Small delay to ensure settings are loaded first
+      setTimeout(() => {
+        try {
+          const encoded = hash.replace('#pinterest_oauth=', '');
+          console.log('Encoded token data:', encoded);
+          const decodedUri = decodeURIComponent(encoded);
+          console.log('URL decoded:', decodedUri);
+          const decoded = atob(decodedUri);
+          console.log('Base64 decoded:', decoded);
+          const tokens = JSON.parse(decoded);
+          console.log('Pinterest OAuth tokens received:', tokens);
+
+          // Store tokens
+          localStorage.setItem('pinterest_tokens', JSON.stringify(tokens));
+          setApiBanner({kind: "info", text: "Pinterest account connected successfully! Enhanced optimization is now active."});
+
+          // Fetch boards
+          fetchPinterestBoards();
+
+          // Clear hash after a brief delay to show success message
+          setTimeout(() => {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }, 3000);
+
+        } catch (e) {
+          console.error('Error parsing Pinterest OAuth tokens:', e);
+          console.error('Error details:', e.message);
+          setApiBanner({kind: "error", text: `Error connecting Pinterest account: ${e.message}. Please try again.`});
+
+          // Clear hash even on error
+          setTimeout(() => {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }, 5000);
+        }
+      }, 100);
     }
   }, []);
 
@@ -102,40 +151,16 @@ export default function App(){
       includeLogo,
       logoAnchor,
       logoScale,
-      logoOffset
+      logoOffset,
+      selectedBoard
     };
     localStorage.setItem('pinPilot_settings', JSON.stringify(settings));
-  }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset]);
+  }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset, selectedBoard]);
 
   // Init API status banner (missing/invalid key clarity)
   useEffect(()=>{
     const s = geminiStatus();
     if (!s.ok) setApiBanner({kind: s.kind, text: s.message});
-
-    // Handle Pinterest OAuth callback
-    const hash = window.location.hash;
-    if (hash.startsWith('#pinterest_oauth=')) {
-      console.log('Pinterest OAuth callback detected, hash:', hash);
-      try {
-        const encoded = hash.replace('#pinterest_oauth=', '');
-        console.log('Encoded token data:', encoded);
-        const decodedUri = decodeURIComponent(encoded);
-        console.log('URL decoded:', decodedUri);
-        const decoded = atob(decodedUri);
-        console.log('Base64 decoded:', decoded);
-        const tokens = JSON.parse(decoded);
-        console.log('Pinterest OAuth tokens received:', tokens);
-        // Store tokens (you might want to save to localStorage or send to backend)
-        localStorage.setItem('pinterest_tokens', JSON.stringify(tokens));
-        setApiBanner({kind: "info", text: "Pinterest account connected successfully! Enhanced optimization is now active."});
-        // Clear hash
-        window.history.replaceState({}, document.title, window.location.pathname);
-      } catch (e) {
-        console.error('Error parsing Pinterest OAuth tokens:', e);
-        console.error('Error details:', e.message);
-        setApiBanner({kind: "error", text: `Error connecting Pinterest account: ${e.message}. Check console for details.`});
-      }
-    }
   },[]);
 
   // file helpers
@@ -272,6 +297,19 @@ export default function App(){
 
   const onMain = (f:File|null)=>{ if(!f) return; readImage(f, setSrcImg); };
   const onLogo = (f:File|null)=>{ if(!f) return; readImage(f, setLogoImg); };
+
+  // Fetch Pinterest boards
+  const fetchPinterestBoards = async () => {
+    try {
+      const response = await fetch('/api/pinterest/boards');
+      const data = await response.json();
+      if (data.ok && data.boards) {
+        setPinterestBoards(data.boards);
+      }
+    } catch (e) {
+      console.error('Error fetching Pinterest boards:', e);
+    }
+  };
 
   const doGenerate = async ()=>{
     if (uploadedFiles.length === 0){ setAiError("Upload files first."); return; }
@@ -602,8 +640,19 @@ Return ONLY valid JSON:
 
               <div className="pp-row">
                 <label>Select Board</label>
-                <select disabled>
-                  <option>Connect Pinterest account first...</option>
+                <select value={selectedBoard} onChange={e=>setSelectedBoard(e.target.value)} disabled={pinterestBoards.length === 0}>
+                  {pinterestBoards.length === 0 ? (
+                    <option>Connect Pinterest account first...</option>
+                  ) : (
+                    <>
+                      <option value="">Choose a board...</option>
+                      {pinterestBoards.map((board: any) => (
+                        <option key={board.id} value={board.id}>
+                          {board.name}
+                        </option>
+                      ))}
+                    </>
+                  )}
                 </select>
                 <div className="pp-sub">Choose which Pinterest board to publish to</div>
               </div>
@@ -690,6 +739,21 @@ Return ONLY valid JSON:
                   ✅ No cost to you - enhances free tier results!
                 </div>
               </div>
+
+              {pinterestBoards.length > 0 && (
+                <div className="pp-row">
+                  <label>Select Board for Optimization</label>
+                  <select value={selectedBoard} onChange={e=>setSelectedBoard(e.target.value)}>
+                    <option value="">Choose a board...</option>
+                    {pinterestBoards.map((board: any) => (
+                      <option key={board.id} value={board.id}>
+                        {board.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="pp-sub">AI will optimize content based on this board's performance data</div>
+                </div>
+              )}
             </div>
           )}
 
