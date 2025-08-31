@@ -2,7 +2,7 @@
 // bigger default canvas logo, clear API status banner.
 
 import React, { useEffect, useRef, useState } from "react";
-import { generatePinCopy, geminiStatus } from "./services/geminiService";
+import { generatePinCopy } from "./services/geminiService";
 import "./index.css";
 
 type TemplateKind = "off" | "bottom" | "side" | "diagonal";
@@ -178,11 +178,8 @@ export default function App(){
     localStorage.setItem('pinPilot_settings', JSON.stringify(settings));
   }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset, selectedBoard, uploadedImageData, uploadedLogoData]);
 
-  // Init API status banner (missing/invalid key clarity)
-  useEffect(()=>{
-    const s = geminiStatus();
-    if (!s.ok) setApiBanner({kind: s.kind, text: s.message});
-  },[]);
+  // API status is now handled server-side in the generate endpoint
+  // No need to check from frontend since environment variables are server-only
 
   // file helpers
   const readImage = (file:File, cb:(img:HTMLImageElement)=>void)=>{
