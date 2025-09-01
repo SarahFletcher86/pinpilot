@@ -114,9 +114,31 @@ Return ONLY valid JSON:
 
     console.log('Gemini response status:', geminiResponse.status);
     if (!geminiResponse.ok) {
-      const errorData = await geminiResponse.json();
-      console.error('Gemini API error:', errorData.message || 'Unknown error');
-      throw new Error(`Gemini API error: ${geminiResponse.status}`);
+      // Handle potential HTML error responses from Gemini
+      const responseText = await geminiResponse.text();
+      console.error('Gemini API error response (first 500 chars):', responseText.substring(0, 500));
+
+      let errorMessage = `Gemini API error: ${geminiResponse.status}`;
+
+      try {
+        const errorData = JSON.parse(responseText);
+        errorMessage = errorData.error?.message || errorData.message || errorMessage;
+      } catch (parseError) {
+        // If it's not JSON, it might be an HTML error page
+        console.error('Failed to parse Gemini error as JSON:', parseError);
+
+        if (responseText.includes('API_KEY')) {
+          errorMessage = 'Invalid Gemini API key. Please check your .env file.';
+        } else if (responseText.includes('quota') || responseText.includes('limit')) {
+          errorMessage = 'Gemini API quota exceeded. Please try again later.';
+        } else if (responseText.includes('permission') || responseText.includes('access')) {
+          errorMessage = 'Gemini API access denied. Check API key permissions.';
+        } else if (responseText.includes('Request Error')) {
+          errorMessage = 'Gemini API request error. Check request format.';
+        }
+      }
+
+      throw new Error(errorMessage);
     }
 
     const geminiData = await geminiResponse.json();
@@ -125,8 +147,23 @@ Return ONLY valid JSON:
     const text = geminiData?.candidates?.[0]?.content?.parts?.map((p: any) => p.text).join("\n") ||
                 geminiData?.candidates?.[0]?.content?.parts?.[0]?.text || "";
 
+    console.log('Gemini response text (first 200 chars):', text.substring(0, 200));
+
     const jsonMatch = text.match(/\{[\s\S]*\}/);
-    const parsedData = jsonMatch ? JSON.parse(jsonMatch[0]) : {};
+    if (!jsonMatch) {
+      console.error('No JSON found in Gemini response');
+      console.error('Full response text:', text);
+      throw new Error('Gemini API did not return valid JSON. Please try again.');
+    }
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(jsonMatch[0]);
+    } catch (parseError) {
+      console.error('Failed to parse JSON from Gemini response:', parseError);
+      console.error('JSON match:', jsonMatch[0]);
+      throw new Error('Gemini API returned invalid JSON format. Please try again.');
+    }
 
     const tags = Array.isArray(parsedData.tags) ? parsedData.tags :
                 String(parsedData.tags || "").split(",").map((t: string) => t.trim()).filter(Boolean);
