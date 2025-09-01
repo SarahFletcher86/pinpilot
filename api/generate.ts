@@ -40,8 +40,17 @@ export default async function handler(req: any, res: any) {
 
     // Check if this is demo mode
     const isDemo = req.headers.referer?.includes('?demo=1') ||
+                   req.headers.referer?.includes('&demo=1') ||
                    req.headers['user-agent']?.includes('demo') ||
-                   req.query?.demo === '1';
+                   req.query?.demo === '1' ||
+                   req.url?.includes('?demo=1') ||
+                   req.url?.includes('&demo=1');
+
+    console.log('Demo mode detection:');
+    console.log('- Referer:', req.headers.referer);
+    console.log('- Query demo:', req.query?.demo);
+    console.log('- URL:', req.url);
+    console.log('- Is demo mode:', isDemo);
 
     // In demo mode, return mock successful response
     if (isDemo) {
