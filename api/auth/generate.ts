@@ -76,10 +76,25 @@ export default async function handler(req: any, res: any) {
       data = JSON.parse(responseText);
     } catch (parseError) {
       console.error('Failed to parse Pinterest response as JSON:', parseError);
-      console.error('Raw response:', responseText);
+      console.error('Raw response (first 1000 chars):', responseText.substring(0, 1000));
+
+      // Try to extract useful error information from HTML
+      let errorMessage = 'Unknown Pinterest error';
+      if (responseText.includes('trial')) {
+        errorMessage = 'Pinterest app is in trial mode. Please request production access.';
+      } else if (responseText.includes('redirect_uri')) {
+        errorMessage = 'Redirect URI mismatch. Check Pinterest app settings.';
+      } else if (responseText.includes('client_id')) {
+        errorMessage = 'Invalid client credentials. Check app ID and secret.';
+      } else if (responseText.includes('Request Error')) {
+        errorMessage = 'Pinterest OAuth request rejected. App may need production approval.';
+      }
+
       return res.status(500).json({
-        error: 'Invalid response from Pinterest',
-        details: responseText.substring(0, 200)
+        error: 'Pinterest OAuth failed',
+        message: errorMessage,
+        details: responseText.substring(0, 300),
+        status: r.status
       });
     }
 

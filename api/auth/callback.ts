@@ -27,7 +27,30 @@ export default async function handler(req: any, res: any) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, redirect_uri })
     });
-    const data = await r.json();
+    // Handle potential HTML error responses from Pinterest
+    const responseText = await r.text();
+    console.log('Token exchange response (first 500 chars):', responseText.substring(0, 500));
+
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('Failed to parse token exchange response as JSON:', parseError);
+
+      // Try to extract useful error information from HTML
+      let errorMessage = 'Pinterest OAuth failed';
+      if (responseText.includes('trial')) {
+        errorMessage = 'Pinterest app is in trial mode. Request production access.';
+      } else if (responseText.includes('redirect_uri')) {
+        errorMessage = 'Redirect URI mismatch in Pinterest app settings.';
+      } else if (responseText.includes('Request Error')) {
+        errorMessage = 'Pinterest rejected OAuth request. App needs production approval.';
+      }
+
+      res.status(500).send(html(`${errorMessage}\n\nRaw response: ${responseText.substring(0, 300)}`));
+      return;
+    }
+
     const pretty = JSON.stringify(data, null, 2);
 
     // Check if the token exchange failed
