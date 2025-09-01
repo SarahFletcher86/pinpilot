@@ -38,6 +38,39 @@ export default async function handler(req: any, res: any) {
       return;
     }
 
+    // Check if this is demo mode
+    const isDemo = req.headers.referer?.includes('?demo=1') ||
+                   req.headers['user-agent']?.includes('demo') ||
+                   req.query?.demo === '1';
+
+    // In demo mode, return mock successful response
+    if (isDemo) {
+      console.log('Demo mode detected - returning mock AI content');
+
+      const mockResponse = {
+        title: "Stunning Digital Stickers Collection - Instant Download!",
+        description: "Transform your digital space with our premium sticker collection! Featuring cute animals, motivational quotes, and trendy designs. Perfect for planners, laptops, and social media. High-quality PNG files with transparent backgrounds. Instant download, unlimited use, perfect for any project!",
+        tags: [
+          "digital stickers",
+          "cute stickers",
+          "planner stickers",
+          "laptop stickers",
+          "transparent PNG",
+          "instant download",
+          "unlimited use",
+          "social media stickers",
+          "motivational stickers",
+          "trend stickers",
+          "digital downloads",
+          "sticker pack"
+        ],
+        imageBase64: files[0] // Return the original image
+      };
+
+      console.log('Demo AI content generation completed successfully');
+      return res.status(200).json(mockResponse);
+    }
+
     // Get API key from server environment (secure)
     const geminiKey = process.env.GEMINI_API_KEY;
     if (!geminiKey) {

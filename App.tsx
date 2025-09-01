@@ -482,9 +482,12 @@ export default function App(){
         overlayText
       });
 
+      // Check if this is demo mode
+      const isDemo = window.location.search.includes('demo=1');
+
       // Call secure backend API for AI generation
-      console.log('Calling secure backend API for AI generation');
-      const backendResponse = await fetch('/api/generate', {
+      console.log('Calling secure backend API for AI generation' + (isDemo ? ' (Demo Mode)' : ''));
+      const backendResponse = await fetch(`/api/generate${isDemo ? '?demo=1' : ''}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
