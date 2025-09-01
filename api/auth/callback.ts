@@ -8,11 +8,20 @@ function html(msg: string) {
 
 export default async function handler(req: any, res: any) {
   try {
+    console.log('Pinterest OAuth callback received');
+    console.log('Query params:', req.query);
+    console.log('Headers:', req.headers);
+
     const { code, state } = req.query || {};
-    if (!code) { res.status(400).send(html('Missing ?code in callback URL')); return; }
+    if (!code) {
+      console.error('Missing authorization code in callback');
+      res.status(400).send(html('Missing ?code in callback URL'));
+      return;
+    }
 
     // Use the configured redirect URI (production for Vercel, localhost for local)
     const redirect_uri = process.env.PINTEREST_REDIRECT_URI!;
+    console.log('Using redirect URI:', redirect_uri);
     const r = await fetch(`${req.headers['x-forwarded-proto'] ?? 'https'}://${req.headers.host}/api/auth/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },

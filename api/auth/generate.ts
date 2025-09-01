@@ -1,16 +1,22 @@
 // api/auth/generate.ts
 export default async function handler(req: any, res: any) {
   try {
+    console.log('Pinterest token exchange request received');
+    console.log('Request method:', req.method);
+    console.log('Request body:', req.body);
+
     if (req.method !== 'POST') {
       res.status(405).json({ message: 'Method Not Allowed' }); return;
     }
     const { code, redirect_uri } = req.body || {};
     if (!code) {
+      console.error('Missing authorization code in request body');
       res.status(400).json({ message: 'Missing authorization code' }); return;
     }
 
     // Use the configured redirect URI
     const final_redirect_uri = redirect_uri || process.env.PINTEREST_REDIRECT_URI;
+    console.log('Final redirect URI:', final_redirect_uri);
     if (!final_redirect_uri) {
       res.status(400).json({ message: 'Missing redirect_uri configuration' }); return;
     }

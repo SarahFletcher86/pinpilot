@@ -99,9 +99,6 @@ export default function App(){
       } catch (e) {
         console.error('Error loading Pinterest tokens:', e);
       }
-    } else {
-      // If no OAuth tokens, try to fetch boards with direct access token
-      fetchPinterestBoards();
     }
   }, []);
 
@@ -183,28 +180,32 @@ export default function App(){
   };
 
   const readImageWithData = (file:File, cb:(img:HTMLImageElement, dataUrl:string)=>void)=>{
+    console.log('Starting to read image file:', file.name, 'size:', file.size, 'type:', file.type);
     const fr = new FileReader();
     fr.onload = ()=>{
       try {
         const dataUrl = fr.result as string;
-        console.log('FileReader loaded, dataUrl length:', dataUrl.length);
+        console.log('FileReader loaded, dataUrl length:', dataUrl.length, 'starts with:', dataUrl.substring(0, 50));
         const i = new Image();
         i.onload = ()=>{
           console.log('Image loaded successfully, dimensions:', i.width, 'x', i.height);
+          console.log('Calling callback with image and dataUrl');
           cb(i, dataUrl);
         };
         i.onerror = (error)=>{
           console.error('Failed to load image:', error);
+          console.log('Calling callback with null image');
           // Still call callback with null image to prevent crash
           cb(null as any, dataUrl);
         };
+        console.log('Setting image src to dataUrl');
         i.src = dataUrl;
       } catch (e) {
         console.error('Error reading image file:', e);
       }
     };
     fr.onerror = (error)=>{
-      console.error('Failed to read file:', error);
+      console.error('Failed to read file with FileReader');
     };
     fr.readAsDataURL(file);
   };
