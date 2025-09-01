@@ -54,6 +54,7 @@ export default function App(){
   const [apiBanner, setApiBanner] = useState<{kind:"info"|"error", text:string}|null>(null);
   const [pinterestBoards, setPinterestBoards] = useState<any[]>([]);
   const [selectedBoard, setSelectedBoard] = useState("");
+  const [isDemoConnected, setIsDemoConnected] = useState(false);
 
   const cvsRef = useRef<HTMLCanvasElement|null>(null);
 
@@ -82,6 +83,15 @@ export default function App(){
         // If there's an error (likely due to large image data), clear localStorage
         localStorage.removeItem('pinPilot_settings');
       }
+    }
+
+    // Check for demo mode
+    const isDemo = window.location.search.includes('demo=1');
+    if (isDemo) {
+      console.log('Demo mode detected - setting up demo connection');
+      setIsDemoConnected(true);
+      // Fetch demo boards
+      fetchPinterestBoards();
     }
 
     // Check for saved Pinterest tokens or direct access token
@@ -694,8 +704,8 @@ export default function App(){
 
               <div className="pp-row">
                 <label>Select Board</label>
-                <select value={selectedBoard} onChange={e=>setSelectedBoard(e.target.value)} disabled={pinterestBoards.length === 0}>
-                  {pinterestBoards.length === 0 ? (
+                <select value={selectedBoard} onChange={e=>setSelectedBoard(e.target.value)} disabled={pinterestBoards.length === 0 && !isDemoConnected}>
+                  {pinterestBoards.length === 0 && !isDemoConnected ? (
                     <option>Connect Pinterest account first...</option>
                   ) : (
                     <>
@@ -799,18 +809,29 @@ export default function App(){
                 </div>
               </div>
 
-              {pinterestBoards.length > 0 && (
+              {(pinterestBoards.length > 0 || isDemoConnected) && (
                 <div className="pp-row">
                   <label>Select Board for Optimization</label>
-                  <select value={selectedBoard} onChange={e=>setSelectedBoard(e.target.value)}>
-                    <option value="">Choose a board...</option>
-                    {pinterestBoards.map((board: any) => (
-                      <option key={board.id} value={board.id}>
-                        {board.name}
-                      </option>
-                    ))}
+                  <select value={selectedBoard} onChange={e=>setSelectedBoard(e.target.value)} disabled={pinterestBoards.length === 0 && !isDemoConnected}>
+                    {pinterestBoards.length === 0 && !isDemoConnected ? (
+                      <option>Connect Pinterest account first...</option>
+                    ) : (
+                      <>
+                        <option value="">Choose a board...</option>
+                        {pinterestBoards.map((board: any) => (
+                          <option key={board.id} value={board.id}>
+                            {board.name} {window.location.search.includes('demo=1') ? '(Demo)' : ''}
+                          </option>
+                        ))}
+                      </>
+                    )}
                   </select>
-                  <div className="pp-sub">AI will optimize content based on this board's performance data</div>
+                  <div className="pp-sub">
+                    AI will optimize content based on this board's performance data
+                    {window.location.search.includes('demo=1') && (
+                      <span style={{color: '#10b981', fontWeight: 'bold'}}> 🎬 Demo Mode Active</span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>
