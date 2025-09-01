@@ -1,5 +1,22 @@
 export default async function handler(req: any, res: any) {
   try {
+    // Check if this is demo mode
+    const isDemo = req.headers.referer?.includes('?demo=1') ||
+                   req.headers['user-agent']?.includes('demo') ||
+                   req.query?.demo === '1';
+
+    // In demo mode, return mock boards data
+    if (isDemo) {
+      console.log('Demo mode detected - returning mock Pinterest boards');
+      const mockBoards = [
+        { id: 'demo-board-1', name: 'Digital Marketing' },
+        { id: 'demo-board-2', name: 'Social Media Graphics' },
+        { id: 'demo-board-3', name: 'Business Branding' },
+        { id: 'demo-board-4', name: 'Content Creation' }
+      ];
+      return res.status(200).json({ ok: true, boards: mockBoards });
+    }
+
     // Get access token from cookie (set by OAuth flow)
     const at = req.headers.cookie?.split(";").map((c: string) => c.trim()).find((c: string) => c.startsWith("pp_at="))?.split("=")[1];
 

@@ -423,7 +423,8 @@ export default function App(){
   // Fetch Pinterest boards
   const fetchPinterestBoards = async () => {
     try {
-      const response = await fetch('/api/pinterest/boards');
+      const isDemo = window.location.search.includes('demo=1');
+      const response = await fetch(`/api/pinterest/boards${isDemo ? '?demo=1' : ''}`);
       const data = await response.json();
       if (data.ok && data.boards) {
         setPinterestBoards(data.boards);
@@ -701,13 +702,18 @@ export default function App(){
                       <option value="">Choose a board...</option>
                       {pinterestBoards.map((board: any) => (
                         <option key={board.id} value={board.id}>
-                          {board.name}
+                          {board.name} {window.location.search.includes('demo=1') ? '(Demo)' : ''}
                         </option>
                       ))}
                     </>
                   )}
                 </select>
-                <div className="pp-sub">Choose which Pinterest board to publish to</div>
+                <div className="pp-sub">
+                  Choose which Pinterest board to publish to
+                  {window.location.search.includes('demo=1') && (
+                    <span style={{color: '#10b981', fontWeight: 'bold'}}> 🎬 Demo Mode Active</span>
+                  )}
+                </div>
               </div>
 
               <div className="pp-row">
