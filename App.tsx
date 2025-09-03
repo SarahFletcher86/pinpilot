@@ -3,6 +3,7 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { generatePinCopy } from "./services/geminiService";
+import ConnectPinterest from "./components/ConnectPinterest";
 import "./index.css";
 
 type TemplateKind = "off" | "bottom" | "side" | "diagonal";
@@ -496,7 +497,8 @@ export default function App(){
           brandPrimary: brand.primary,
           brandAccent: brand.accent,
           overlayText,
-          businessNiche
+          businessNiche,
+          demo: isDemo ? '1' : undefined
         })
       });
 
@@ -676,19 +678,7 @@ export default function App(){
                 📌 Pinterest Publishing
               </h3>
 
-              <div className="pp-row">
-                <label>Pinterest Account</label>
-                <button
-                  className="pp-btn"
-                  style={{background: '#E60023'}}
-                  onClick={() => {
-                    window.location.href = '/api/auth/start';
-                  }}
-                >
-                  🔗 Connect Pinterest Account
-                </button>
-                <div className="pp-sub">Connect to post and schedule pins automatically (available after API upgrade)</div>
-              </div>
+              <ConnectPinterest />
 
               <div className="pp-row">
                 <label>Pin Purpose/Niche</label>
@@ -792,18 +782,9 @@ export default function App(){
                 </a>
               </div>
 
-              <div className="pp-row" style={{marginTop: '20px'}}>
-                <label>Connect Pinterest for Better Optimization</label>
-                <button
-                  className="pp-btn"
-                  style={{background: '#E60023'}}
-                  onClick={() => {
-                    window.location.href = '/api/auth/start';
-                  }}
-                >
-                  🔗 Connect Pinterest Account (Free)
-                </button>
-                <div className="pp-sub">
+              <div style={{marginTop: '20px'}}>
+                <ConnectPinterest />
+                <div className="pp-sub" style={{marginTop: '8px'}}>
                   <strong>Benefits of connecting:</strong><br/>
                   ✅ AI analyzes your Pinterest trends for better content<br/>
                   ✅ Smarter keyword suggestions based on what performs<br/>
