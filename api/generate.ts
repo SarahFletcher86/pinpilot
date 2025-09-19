@@ -46,7 +46,9 @@ export default async function handler(req: any, res: any) {
                    req.url?.includes('?demo=1') ||
                    req.url?.includes('&demo=1') ||
                    (body as any).demo === true ||
-                   (body as any).demo === '1';
+                   (body as any).demo === '1' ||
+                   req.headers.referer?.includes('demo=1') || // Extra fallback
+                   req.headers.referer?.includes('vercel.app') && req.headers.referer?.includes('demo=1'); // Vercel specific
 
     console.log('=== DEMO MODE DETECTION ===');
     console.log('- Full headers:', JSON.stringify(req.headers, null, 2));
@@ -54,12 +56,21 @@ export default async function handler(req: any, res: any) {
     console.log('- Full URL:', req.url);
     console.log('- Original URL:', req.originalUrl);
     console.log('- Referer contains demo:', req.headers.referer?.includes('demo=1'));
+    console.log('- Body demo flag:', (body as any).demo);
     console.log('- Is demo mode:', isDemo);
+    console.log('- Body keys:', Object.keys(body));
     console.log('===========================');
 
     // In demo mode, return mock successful response
     if (isDemo) {
-      console.log('Demo mode detected - returning mock AI content');
+      console.log('🎬 DEMO MODE ACTIVATED - Returning mock AI content');
+      console.log('Demo request details:', {
+        hasFiles: files.length > 0,
+        fileCount: files.length,
+        isVideo,
+        brandPrimary: body.brandPrimary,
+        businessNiche: body.businessNiche
+      });
 
       const mockResponse = {
         title: "Stunning Digital Stickers Collection - Instant Download!",
