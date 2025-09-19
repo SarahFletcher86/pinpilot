@@ -167,13 +167,11 @@ Return ONLY valid JSON:
 
       let errorMessage = `Gemini API error: ${geminiResponse.status}`;
 
-      try {
-        const errorData = JSON.parse(responseText);
-        errorMessage = errorData.error?.message || errorData.message || errorMessage;
-      } catch (parseError) {
-        // If it's not JSON, it might be an HTML error page
-        console.error('Failed to parse Gemini error as JSON:', parseError);
+      // Check if response is HTML (common Gemini error format)
+      if (responseText.trim().startsWith('<!DOCTYPE') || responseText.trim().startsWith('<html')) {
+        console.error('Gemini returned HTML error page instead of JSON');
 
+        // Extract error info from HTML if possible
         if (responseText.includes('API_KEY')) {
           errorMessage = 'Invalid Gemini API key. Please check your .env file.';
         } else if (responseText.includes('quota') || responseText.includes('limit')) {
@@ -182,6 +180,17 @@ Return ONLY valid JSON:
           errorMessage = 'Gemini API access denied. Check API key permissions.';
         } else if (responseText.includes('Request Error')) {
           errorMessage = 'Gemini API request error. Check request format.';
+        } else {
+          errorMessage = 'Gemini API returned an error page. Please check your API key and try again.';
+        }
+      } else {
+        // Try to parse as JSON
+        try {
+          const errorData = JSON.parse(responseText);
+          errorMessage = errorData.error?.message || errorData.message || errorMessage;
+        } catch (parseError) {
+          console.error('Failed to parse Gemini error as JSON:', parseError);
+          errorMessage = 'Gemini API returned an unexpected response format.';
         }
       }
 

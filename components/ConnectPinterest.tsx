@@ -13,12 +13,10 @@ export default function ConnectPinterest() {
       try {
         setIsLoading(true);
 
-        // In demo mode, simulate successful connection
+        // In demo mode, don't auto-connect - always show connection button
         if (isDemo) {
-          setTimeout(() => {
-            setHasAccess(true);
-            setIsLoading(false);
-          }, 1000); // Simulate loading time
+          setHasAccess(false);
+          setIsLoading(false);
           return;
         }
 

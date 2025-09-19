@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pinterest - Authorize App</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+        }
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        .header {
+            background: #E60023;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+        }
+        .content {
+            padding: 24px;
+        }
+        .app-info {
+            display: flex;
+            align-items: center;
+            margin-bottom: 24px;
+            padding: 16px;
+            background: #f8f9fa;
+            border-radius: 8px;
+        }
+        .app-icon {
+            width: 48px;
+            height: 48px;
+            background: #E60023;
+            border-radius: 8px;
+            margin-right: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .app-details h3 {
+            margin: 0 0 4px 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .app-details p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .permissions {
+            margin-bottom: 24px;
+        }
+        .permissions h4 {
+            margin: 0 0 12px 0;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .permission-item {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 12px;
+            padding: 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+        }
+        .permission-icon {
+            color: #E60023;
+            margin-right: 12px;
+            margin-top: 2px;
+        }
+        .permission-text h5 {
+            margin: 0 0 4px 0;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        .permission-text p {
+            margin: 0;
+            font-size: 13px;
+            color: #666;
+        }
+        .actions {
+            display: flex;
+            gap: 12px;
+        }
+        .btn {
+            flex: 1;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 24px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        .btn-primary {
+            background: #E60023;
+            color: white;
+        }
+        .btn-primary:hover {
+            background: #cc0020;
+        }
+        .btn-secondary {
+            background: #f8f9fa;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+        .btn-secondary:hover {
+            background: #e9ecef;
+        }
+        .footer {
+            text-align: center;
+            padding: 16px 24px;
+            background: #f8f9fa;
+            font-size: 12px;
+            color: #666;
+        }
+        .footer a {
+            color: #E60023;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Authorize app</h1>
+        </div>
+
+        <div class="content">
+            <div class="app-info">
+                <div class="app-icon">📌</div>
+                <div class="app-details">
+                    <h3>Pin Pilot</h3>
+                    <p>wants to connect to your Pinterest account</p>
+                </div>
+            </div>
+
+            <div class="permissions">
+                <h4>This app will be able to:</h4>
+
+                <div class="permission-item">
+                    <span class="permission-icon">📖</span>
+                    <div class="permission-text">
+                        <h5>Read your boards</h5>
+                        <p>Access your Pinterest boards to help optimize content</p>
+                    </div>
+                </div>
+
+                <div class="permission-item">
+                    <span class="permission-icon">📝</span>
+                    <div class="permission-text">
+                        <h5>Read your pins</h5>
+                        <p>Analyze your existing pins for better recommendations</p>
+                    </div>
+                </div>
+
+                <div class="permission-item">
+                    <span class="permission-icon">📤</span>
+                    <div class="permission-text">
+                        <h5>Write pins</h5>
+                        <p>Create and publish new pins to your boards</p>
+                    </div>
+                </div>
+
+                <div class="permission-item">
+                    <span class="permission-icon">👤</span>
+                    <div class="permission-text">
+                        <h5>Read your profile</h5>
+                        <p>Access basic profile information for personalization</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="actions">
+                <button class="btn btn-secondary" onclick="cancelAuth()">Cancel</button>
+                <button class="btn btn-primary" onclick="authorizeApp()">Authorize app</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            By authorizing, you agree to Pinterest's
+            <a href="https://policy.pinterest.com/en/developer-terms" target="_blank">Developer Terms</a> and
+            <a href="https://policy.pinterest.com/en/privacy-policy" target="_blank">Privacy Policy</a>
+        </div>
+    </div>
+
+    <script>
+        function authorizeApp() {
+            // Simulate successful authorization
+            alert('✅ Authorization successful!\n\nRedirecting back to Pin Pilot...');
+
+            // In a real scenario, this would redirect with authorization code
+            // For demo purposes, we'll just show the success
+            setTimeout(() => {
+                // Close this window or redirect
+                window.close();
+            }, 2000);
+        }
+
+        function cancelAuth() {
+            alert('Authorization cancelled');
+            window.close();
+        }
+
+        // Add some realistic loading behavior
+        document.addEventListener('DOMContentLoaded', function() {
+            // Simulate a brief loading state
+            setTimeout(() => {
+                document.querySelector('.btn-primary').textContent = 'Authorize app';
+                document.querySelector('.btn-primary').disabled = false;
+            }, 500);
+        });
+    </script>
+</body>
+</html>
