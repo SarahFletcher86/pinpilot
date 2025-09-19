@@ -467,24 +467,27 @@ export default function App(){
         }
       }
 
-      // Convert files to base64
-      const filePromises = uploadedFiles.map(file => {
-        return new Promise<string>((resolve) => {
-          const fr = new FileReader();
-          fr.onload = () => resolve(fr.result as string);
-          fr.readAsDataURL(file);
-        });
-      });
-      const base64Files = await Promise.all(filePromises);
-
-      console.log('Calling Gemini API directly with:', {
-        brandPrimary: brand.primary,
-        brandAccent: brand.accent,
-        overlayText
-      });
-
       // Check if this is demo mode
       const isDemo = window.location.search.includes('demo=1');
+
+      // Convert files to base64 (skip for demo mode to avoid payload size limits)
+      let base64Files: string[] = [];
+      if (isDemo) {
+        // In demo mode, just send a placeholder
+        base64Files = ['data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='];
+        console.log('Demo mode: Using placeholder image to avoid payload size limits');
+      } else {
+        // Convert files to base64 for real processing
+        const filePromises = uploadedFiles.map(file => {
+          return new Promise<string>((resolve) => {
+            const fr = new FileReader();
+            fr.onload = () => resolve(fr.result as string);
+            fr.readAsDataURL(file);
+          });
+        });
+        base64Files = await Promise.all(filePromises);
+      }
+
 
       // Call secure backend API for AI generation
       console.log('Calling secure backend API for AI generation' + (isDemo ? ' (Demo Mode)' : ''));
