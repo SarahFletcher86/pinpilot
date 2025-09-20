@@ -1,7 +1,8 @@
 // api/schedule/index.ts
 // Schedules a pin or posts immediately if scheduledAt is "now".
 
-import { supabase } from "../_supabase.js";
+import { admin } from "../_supabase.js";
+const supabase = admin();
 
 type Body = {
   pinterestAccessToken: string;
