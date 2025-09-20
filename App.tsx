@@ -22,7 +22,9 @@ const hex = (v:string, fb:string)=> {
 };
 
 export default function App(){
-  const isPro = new URLSearchParams(window.location.search).get("pro")==="1";
+  const urlParams = new URLSearchParams(window.location.search);
+  const isPro = urlParams.get("pro")==="1";
+  const showPricing = urlParams.get("pricing")==="1" || urlParams.get("checkout")==="1";
 
   // state
   const [fit, setFit] = useState<FitMode>("contain");
@@ -582,6 +584,72 @@ export default function App(){
             </div>
           )}
 
+          {/* Dedicated pricing page when accessed via ?pricing=1 or ?checkout=1 */}
+          {showPricing && !isPro && (
+            <div style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: 'rgba(0,0,0,0.8)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 1000
+            }}>
+              <div style={{
+                background: 'var(--bg)',
+                padding: '40px',
+                borderRadius: '12px',
+                maxWidth: '500px',
+                width: '90%',
+                maxHeight: '90vh',
+                overflow: 'auto'
+              }}>
+                <h2 style={{color: 'var(--text)', marginBottom: '20px', textAlign: 'center'}}>
+                  🚀 Upgrade to Pin Pilot Pro
+                </h2>
+
+                <div className="pricing-card" style={{margin: 0}}>
+                  <h4 style={{margin: '0 0 8px', color: 'var(--accent)', fontSize: '18px'}}>
+                    🎉 Founder's Pricing Available!
+                  </h4>
+                  <div style={{fontSize: '16px', lineHeight: '1.5', marginBottom: '15px'}}>
+                    <strong>$5/month for life</strong> for the first 20 subscribers<br/>
+                    <span style={{color: 'var(--muted)'}}>Then $10/month for everyone else</span><br/>
+                    <span style={{color: 'var(--accent)', fontSize: '14px'}}>⚡ Limited availability - claim your spot now!</span>
+                  </div>
+                  <div style={{fontSize: '14px', color: 'var(--muted)', marginBottom: '15px'}}>
+                    ✅ Automated pin creation with AI branding<br/>
+                    ✅ Optimized titles, descriptions & keywords<br/>
+                    ✅ Download high-quality branded pins<br/>
+                    ✅ Pinterest account connection & scheduling<br/>
+                    ✅ Manual branding controls<br/>
+                    ✅ Priority support
+                  </div>
+
+                  <div style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
+                    <a
+                      href="/api/stripe/checkout"
+                      className="pp-btn"
+                      style={{flex: 1, textDecoration: 'none', textAlign: 'center'}}
+                    >
+                      🚀 Claim Founder's Pricing - $5/month
+                    </a>
+                    <button
+                      onClick={() => window.history.replaceState({}, '', window.location.pathname)}
+                      className="pp-btn ghost"
+                      style={{flex: 1}}
+                    >
+                      Maybe Later
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
           {uploadedFiles.length > 0 && (
             <div className="pp-row">
               <label>Uploaded Files:</label>
@@ -750,7 +818,7 @@ export default function App(){
             </>
           )}
 
-          {!isPro && (
+          {(!isPro || showPricing) && (
             <div className="founder-pricing-notice">
               <div className="pp-sub" style={{marginTop: 12, marginBottom: 16}}>
                 Free tier uses automated branding with default settings. Upgrade to Pro for manual customization.
