@@ -549,7 +549,7 @@ export default function App(){
 
       <div className="pp-grid">
         {/* LEFT CARD */}
-        <section className="pp-card">
+        <section className="pp-card" style={{marginBottom: '24px'}}>
           <h3>Upload & Brand</h3>
           <div className="pp-sub">Auto-resizes to 1000×1500 (2:3). {proBadge}</div>
 
@@ -584,71 +584,6 @@ export default function App(){
             </div>
           )}
 
-          {/* Dedicated pricing page when accessed via ?pricing=1 or ?checkout=1 */}
-          {showPricing && !isPro && (
-            <div style={{
-              position: 'fixed',
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: 0,
-              background: 'rgba(0,0,0,0.8)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              zIndex: 1000
-            }}>
-              <div style={{
-                background: 'var(--bg)',
-                padding: '40px',
-                borderRadius: '12px',
-                maxWidth: '500px',
-                width: '90%',
-                maxHeight: '90vh',
-                overflow: 'auto'
-              }}>
-                <h2 style={{color: 'var(--text)', marginBottom: '20px', textAlign: 'center'}}>
-                  🚀 Upgrade to Pin Pilot Pro
-                </h2>
-
-                <div className="pricing-card" style={{margin: 0}}>
-                  <h4 style={{margin: '0 0 8px', color: 'var(--accent)', fontSize: '18px'}}>
-                    🎉 Founder's Pricing Available!
-                  </h4>
-                  <div style={{fontSize: '16px', lineHeight: '1.5', marginBottom: '15px'}}>
-                    <strong>$5/month for life</strong> for the first 20 subscribers<br/>
-                    <span style={{color: 'var(--muted)'}}>Then $10/month for everyone else</span><br/>
-                    <span style={{color: 'var(--accent)', fontSize: '14px'}}>⚡ Limited availability - claim your spot now!</span>
-                  </div>
-                  <div style={{fontSize: '14px', color: 'var(--muted)', marginBottom: '15px'}}>
-                    ✅ Automated pin creation with AI branding<br/>
-                    ✅ Optimized titles, descriptions & keywords<br/>
-                    ✅ Download high-quality branded pins<br/>
-                    ✅ Pinterest account connection & scheduling<br/>
-                    ✅ Manual branding controls<br/>
-                    ✅ Priority support
-                  </div>
-
-                  <div style={{display: 'flex', gap: '10px', marginTop: '20px'}}>
-                    <a
-                      href="/api/stripe/checkout"
-                      className="pp-btn"
-                      style={{flex: 1, textDecoration: 'none', textAlign: 'center'}}
-                    >
-                      🚀 Claim Founder's Pricing - $5/month
-                    </a>
-                    <button
-                      onClick={() => window.history.replaceState({}, '', window.location.pathname)}
-                      className="pp-btn ghost"
-                      style={{flex: 1}}
-                    >
-                      Maybe Later
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
 
           {uploadedFiles.length > 0 && (
             <div className="pp-row">
@@ -827,79 +762,6 @@ export default function App(){
             </>
           )}
 
-          {(!isPro || showPricing) && (
-            <div className="founder-pricing-notice">
-              <div className="pp-sub" style={{marginTop: 12, marginBottom: 16}}>
-                Free tier uses automated branding with default settings. Upgrade to Pro for manual customization.
-              </div>
-
-              <div className="pricing-card">
-                <h4 style={{margin: '0 0 8px', color: 'var(--accent)', fontSize: '16px'}}>
-                  🎉 Founder's Pricing Available!
-                </h4>
-                <div style={{fontSize: '14px', lineHeight: '1.5', marginBottom: '12px'}}>
-                  <strong>$5/month for life</strong> for the first 20 subscribers<br/>
-                  <span style={{color: 'var(--muted)'}}>Then $10/month for everyone else</span><br/>
-                  <span style={{color: 'var(--accent)', fontSize: '13px'}}>⚡ Limited availability - claim your spot now!</span>
-                </div>
-                <div style={{fontSize: '13px', color: 'var(--muted)', marginBottom: '12px'}}>
-                  ✅ Automated pin creation with AI branding<br/>
-                  ✅ Optimized titles, descriptions & keywords<br/>
-                  ✅ Download high-quality branded pins<br/>
-                  🔄 Auto-posting & scheduling <em>(available after Pinterest API approval)</em>
-                </div>
-                <div style={{fontSize: '12px', color: 'var(--text)', background: 'var(--panel)', padding: '8px', borderRadius: '6px', border: '1px solid var(--border)'}}>
-                  <strong>Important:</strong> Auto-posting and scheduling features require Pinterest API upgrade approval.
-                  You'll be notified when these features become available. Founder's pricing is guaranteed for life regardless of when API approval happens.
-                </div>
-
-                <a
-                  href="/api/stripe/checkout"
-                  className="pp-btn"
-                  style={{display: 'inline-block', marginTop: '12px', textDecoration: 'none'}}
-                >
-                  🚀 Claim Founder's Pricing - $5/month
-                </a>
-              </div>
-
-              <div style={{marginTop: '20px'}}>
-                <ConnectPinterest />
-                <div className="pp-sub" style={{marginTop: '8px'}}>
-                  <strong>Benefits of connecting:</strong><br/>
-                  ✅ AI analyzes your Pinterest trends for better content<br/>
-                  ✅ Smarter keyword suggestions based on what performs<br/>
-                  ✅ Personalized optimization for your audience<br/>
-                  ✅ No cost to you - enhances free tier results!
-                </div>
-              </div>
-
-              {(pinterestBoards.length > 0 || isDemoConnected) && (
-                <div className="pp-row">
-                  <label>Select Board for Optimization</label>
-                  <select value={selectedBoard} onChange={e=>setSelectedBoard(e.target.value)} disabled={pinterestBoards.length === 0 && !isDemoConnected}>
-                    {pinterestBoards.length === 0 && !isDemoConnected ? (
-                      <option>Connect Pinterest account first...</option>
-                    ) : (
-                      <>
-                        <option value="">Choose a board...</option>
-                        {pinterestBoards.map((board: any) => (
-                          <option key={board.id} value={board.id}>
-                            {board.name} {window.location.search.includes('demo=1') ? '(Demo)' : ''}
-                          </option>
-                        ))}
-                      </>
-                    )}
-                  </select>
-                  <div className="pp-sub">
-                    AI will optimize content based on this board's performance data
-                    {window.location.search.includes('demo=1') && (
-                      <span style={{color: '#10b981', fontWeight: 'bold'}}> 🎬 Demo Mode Active</span>
-                    )}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
 
           <div className="pp-actions">
             <button className="pp-btn" onClick={doGenerate} disabled={aiLoading}>
@@ -914,7 +776,7 @@ export default function App(){
         </section>
 
         {/* RIGHT CARD */}
-        <section className="pp-card preview-wrap">
+        <section className="pp-card preview-wrap" style={{marginBottom: '24px'}}>
           <h3>Preview & Content</h3>
           <div className="pp-sub">What you see is what you export.</div>
 
@@ -948,6 +810,71 @@ export default function App(){
           </div>
         </section>
       </div>
+
+      {/* HORIZONTAL PRICING SECTION */}
+      {!isPro && (
+        <div className="pp-pricing-section">
+          <div className="pp-pricing-container">
+            <div className="pp-pricing-header">
+              <h3 style={{margin: '0 0 8px', color: 'var(--text)', fontSize: '24px', fontWeight: '600'}}>
+                🚀 Upgrade to Pin Pilot Pro
+              </h3>
+              <p style={{margin: 0, color: 'var(--muted)', fontSize: '16px'}}>
+                Unlock advanced features and supercharge your Pinterest marketing
+              </p>
+            </div>
+
+            <div className="pp-pricing-grid">
+              <div className="pp-pricing-card pp-pricing-founder">
+                <div className="pp-pricing-badge">Most Popular</div>
+                <h4>Founder's Plan</h4>
+                <div className="pp-pricing-price">
+                  <span className="pp-price-amount">$5</span>
+                  <span className="pp-price-period">/month</span>
+                </div>
+                <p className="pp-pricing-description">Limited time offer for the first 20 subscribers</p>
+                <ul className="pp-pricing-features">
+                  <li>✅ Automated pin creation with AI branding</li>
+                  <li>✅ Optimized titles, descriptions & keywords</li>
+                  <li>✅ Download high-quality branded pins</li>
+                  <li>✅ Pinterest account connection & scheduling</li>
+                  <li>✅ Manual branding controls</li>
+                  <li>✅ Priority support</li>
+                </ul>
+                <a href="/api/stripe/checkout" className="pp-btn pp-pricing-btn">
+                  Claim Founder's Price - $5/month
+                </a>
+              </div>
+
+              <div className="pp-pricing-card pp-pricing-regular">
+                <h4>Regular Plan</h4>
+                <div className="pp-pricing-price">
+                  <span className="pp-price-amount">$10</span>
+                  <span className="pp-price-period">/month</span>
+                </div>
+                <p className="pp-pricing-description">Full access to all Pro features</p>
+                <ul className="pp-pricing-features">
+                  <li>✅ Everything in Founder's Plan</li>
+                  <li>✅ Advanced analytics & insights</li>
+                  <li>✅ Bulk pin creation & scheduling</li>
+                  <li>✅ Custom branding templates</li>
+                  <li>✅ API access for integrations</li>
+                  <li>✅ White-label options</li>
+                </ul>
+                <button className="pp-btn pp-pricing-btn pp-btn-secondary" disabled>
+                  Available After Founders
+                </button>
+              </div>
+            </div>
+
+            <div className="pp-pricing-footer">
+              <p style={{textAlign: 'center', color: 'var(--muted)', fontSize: '14px', margin: '16px 0'}}>
+                🔒 Secure payment powered by Stripe • 30-day money-back guarantee • Cancel anytime
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
