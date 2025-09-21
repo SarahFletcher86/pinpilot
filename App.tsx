@@ -547,9 +547,9 @@ export default function App(){
       {/* optional API banner */}
       {apiBanner && <div className={`pp-banner ${apiBanner.kind}`}>{apiBanner.text}</div>}
 
-      <div className="pp-grid" style={{alignItems: 'flex-start'}}>
+      <div className="pp-grid">
         {/* LEFT CARD */}
-        <section className="pp-card" style={{maxHeight: '80vh', overflowY: 'auto', position: 'sticky', top: '20px'}}>
+        <section className="pp-card">
           <h3>Upload & Brand</h3>
           <div className="pp-sub">Auto-resizes to 1000×1500 (2:3). {proBadge}</div>
 

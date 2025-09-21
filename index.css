@@ -1,20 +1,20 @@
 /* index.css — Pin Pilot (brand-matched, no Tailwind) */
 
 :root{
-  /* Professional color scheme - exact hex codes */
-  --bg1: #74D6D8;          /* light aqua/teal background */
-  --bg2: #5FC2C5;          /* slightly deeper aqua gradient */
+  /* Professional color scheme - clean and modern */
+  --bg: #ffffff;           /* clean white background */
   --card: #ffffff;         /* pure white card background */
   --panel: #f8fafc;        /* clean light panel */
-  --text: #1C1E45;         /* very dark navy text */
+  --text: #1e293b;         /* professional dark slate text */
   --muted: #64748b;        /* professional muted text */
-  --primary: #5459D4;      /* medium purple primary */
-  --accent: #74D6D8;       /* aqua accent matching background */
+  --primary: #3b82f6;      /* professional blue primary */
+  --accent: #06b6d4;       /* cyan accent */
   --border: #e2e8f0;       /* subtle light borders */
-  --shadow: 0 4px 20px rgba(28, 30, 69, 0.08); /* soft navy shadow */
-  --hover: #f1f5f9;        /* clean hover states */
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06); /* subtle shadow */
+  --hover: #f8fafc;        /* clean hover states */
   --success: #10b981;      /* green for success states */
   --warning: #f59e0b;      /* amber for warnings */
+  --accent-light: rgba(6, 182, 212, 0.1); /* light accent background */
 }
 
 /* GLOBAL */
@@ -24,7 +24,7 @@ body {
   margin: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   color: var(--text);
-  background: linear-gradient(135deg, var(--bg1) 0%, var(--bg2) 100%);
+  background: var(--bg);
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -50,23 +50,24 @@ body {
 /* GRID */
 .pp-grid {
   display: grid;
-  grid-template-columns: 380px 1fr;
-  gap: 32px;
+  grid-template-columns: 340px 1fr;
+  gap: 24px;
   align-items: start;
+  max-width: 100%;
 }
 
 /* CARD */
 .pp-card{
   background: var(--card);
   border:1px solid var(--border);
-  border-radius:12px;
-  padding:20px;
+  border-radius:8px;
+  padding:16px;
   box-shadow: var(--shadow);
   transition: all 0.2s ease;
 }
 .pp-card:hover{
   border-color: var(--primary);
-  box-shadow: 0 12px 40px rgba(99, 102, 241, 0.15);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 .pp-card h3{
   margin:0 0 12px;
@@ -185,18 +186,18 @@ body {
   background: var(--primary);
   color: white;
   border: none;
-  border-radius: 8px;
-  padding: 12px 20px;
-  font-weight: 600;
+  border-radius: 6px;
+  padding: 10px 16px;
+  font-weight: 500;
   font-size: 14px;
   cursor: pointer;
   transition: all 0.2s ease;
-  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 .pp-btn:hover:not(:disabled){
-  background: #5855eb;
+  background: #2563eb;
   transform: translateY(-1px);
-  box-shadow: 0 4px 16px rgba(99, 102, 241, 0.4);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
 }
 .pp-btn:disabled{
   opacity: 0.6;
@@ -224,39 +225,31 @@ body {
 .preview-wrap {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  position: sticky;
-  top: 20px;
+  gap: 16px;
 }
 
 .canvas-frame {
   background: var(--card);
-  border: 2px solid var(--border);
-  border-radius: 16px;
-  padding: 24px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
   display: flex;
   justify-content: center;
-  box-shadow: 0 8px 32px rgba(28, 30, 69, 0.1);
-  transition: all 0.3s ease;
+  box-shadow: var(--shadow);
+  transition: all 0.2s ease;
 }
 
 .canvas-frame:hover {
   border-color: var(--primary);
-  box-shadow: 0 12px 40px rgba(28, 30, 69, 0.15);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
 }
 
 canvas {
   display: block;
   max-width: 100%;
   height: auto;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(28, 30, 69, 0.1);
-  transition: all 0.3s ease;
-}
-
-canvas:hover {
-  transform: scale(1.02);
-  box-shadow: 0 8px 32px rgba(28, 30, 69, 0.15);
+  border-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* AI FIELDS */
