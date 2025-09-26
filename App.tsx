@@ -3,8 +3,10 @@
 
 import React, { useEffect, useRef, useState } from "react";
 import { generatePinCopy } from "./services/geminiService";
-import ConnectPinterest from "./components/ConnectPinterest";
 import "./index.css";
+
+// Import JSZip for ZIP file creation
+import JSZip from 'jszip';
 
 type TemplateKind = "off" | "bottom" | "side" | "diagonal";
 type FitMode = "contain" | "cover";
@@ -12,6 +14,14 @@ type LogoAnchor =
   | "top-left" | "top-center" | "top-right"
   | "middle-left" | "center" | "middle-right"
   | "bottom-left" | "bottom-center" | "bottom-right";
+type Platform = "pinterest" | "instagram" | "tiktok" | "twitter" | "facebook";
+type ExportFormat = {
+  name: string;
+  width: number;
+  height: number;
+  platform: Platform;
+  description: string;
+};
 
 const PIN = { w: 1000, h: 1500 }; // 2:3 standard
 
@@ -55,9 +65,10 @@ export default function App(){
 
   const [downloadUrl, setDownloadUrl] = useState("");
   const [apiBanner, setApiBanner] = useState<{kind:"info"|"error", text:string}|null>(null);
-  const [pinterestBoards, setPinterestBoards] = useState<any[]>([]);
-  const [selectedBoard, setSelectedBoard] = useState("");
-  const [isDemoConnected, setIsDemoConnected] = useState(false);
+  const [selectedPlatform, setSelectedPlatform] = useState<Platform>("pinterest");
+  const [exportFormats, setExportFormats] = useState<ExportFormat[]>([]);
+  const [generatedVariations, setGeneratedVariations] = useState<any[]>([]);
+  const [currentVariation, setCurrentVariation] = useState(0);
 
   const cvsRef = useRef<HTMLCanvasElement|null>(null);
 
@@ -78,7 +89,6 @@ export default function App(){
         if (settings.logoAnchor) setLogoAnchor(settings.logoAnchor);
         if (settings.logoScale) setLogoScale(settings.logoScale);
         if (settings.logoOffset) setLogoOffset(settings.logoOffset);
-        if (settings.selectedBoard) setSelectedBoard(settings.selectedBoard);
         // Note: Image data is no longer persisted to prevent localStorage quota issues
         // Images will need to be re-uploaded after page refresh
       } catch (e) {
@@ -88,79 +98,10 @@ export default function App(){
       }
     }
 
-    // Check for demo mode
-    const isDemo = window.location.search.includes('demo=1');
-    if (isDemo) {
-      console.log('Demo mode detected - setting up demo connection');
-      setIsDemoConnected(true);
-      // Fetch demo boards
-      fetchPinterestBoards();
-    }
-
-    // Check for saved Pinterest tokens or direct access token
-    const savedTokens = localStorage.getItem('pinterest_tokens');
-    if (savedTokens) {
-      try {
-        const tokens = JSON.parse(savedTokens);
-        if (tokens.access_token) {
-          // Set cookie for API access
-          document.cookie = `pp_at=${tokens.access_token}; Path=/; Max-Age=86400; SameSite=Lax`;
-          setApiBanner({kind: "info", text: "Pinterest account connected! Enhanced optimization active."});
-          // Fetch boards if we have tokens
-          fetchPinterestBoards();
-        }
-      } catch (e) {
-        console.error('Error loading Pinterest tokens:', e);
-      }
-    }
+    // Initialize export formats for selected platform
+    updateExportFormats("pinterest");
   }, []);
 
-  // Handle Pinterest OAuth callback (with delay to avoid interfering with settings loading)
-  useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.startsWith('#pinterest_oauth=')) {
-      console.log('Pinterest OAuth callback detected, hash:', hash);
-
-      // Small delay to ensure settings are loaded first
-      setTimeout(() => {
-        try {
-          const encoded = hash.replace('#pinterest_oauth=', '');
-          const decodedUri = decodeURIComponent(encoded);
-          const decoded = atob(decodedUri);
-          const tokens = JSON.parse(decoded);
-          console.log('Pinterest OAuth tokens received successfully');
-
-          // Store tokens
-          localStorage.setItem('pinterest_tokens', JSON.stringify(tokens));
-
-          // Also set cookie for API access
-          if (tokens.access_token) {
-            document.cookie = `pp_at=${tokens.access_token}; Path=/; Max-Age=86400; SameSite=Lax`;
-          }
-
-          setApiBanner({kind: "info", text: "Pinterest account connected successfully! Enhanced optimization is now active."});
-
-          // Fetch boards
-          fetchPinterestBoards();
-
-          // Clear hash after a brief delay to show success message
-          setTimeout(() => {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }, 3000);
-
-        } catch (e) {
-          console.error('Error parsing Pinterest OAuth tokens:', e);
-          console.error('Error details:', e.message);
-          setApiBanner({kind: "error", text: `Error connecting Pinterest account: ${e.message}. Please try again.`});
-
-          // Clear hash even on error
-          setTimeout(() => {
-            window.history.replaceState({}, document.title, window.location.pathname);
-          }, 5000);
-        }
-      }, 100);
-    }
-  }, []);
 
   // Save settings whenever they change (exclude large image data to prevent localStorage quota exceeded)
   useEffect(() => {
@@ -176,11 +117,11 @@ export default function App(){
       logoAnchor,
       logoScale,
       logoOffset,
-      selectedBoard
+      selectedPlatform
       // Note: uploadedImageData and uploadedLogoData are not saved to prevent localStorage quota issues
     };
     localStorage.setItem('pinPilot_settings', JSON.stringify(settings));
-  }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset, selectedBoard]);
+  }, [brand, font, template, overlayOn, overlayText, businessNiche, fit, includeLogo, logoAnchor, logoScale, logoOffset, selectedPlatform]);
 
   // API status is now handled server-side in the generate endpoint
   // No need to check from frontend since environment variables are server-only
@@ -433,18 +374,42 @@ export default function App(){
     });
   };
 
-  // Fetch Pinterest boards
-  const fetchPinterestBoards = async () => {
-    try {
-      const isDemo = window.location.search.includes('demo=1');
-      const response = await fetch(`/api/pinterest/boards${isDemo ? '?demo=1' : ''}`);
-      const data = await response.json();
-      if (data.ok && data.boards) {
-        setPinterestBoards(data.boards);
-      }
-    } catch (e) {
-      console.error('Error fetching Pinterest boards:', e);
+  // Update export formats based on selected platform
+  const updateExportFormats = (platform: Platform) => {
+    const formats: ExportFormat[] = [];
+
+    switch (platform) {
+      case "pinterest":
+        formats.push(
+          { name: "Pinterest Pin", width: 1000, height: 1500, platform: "pinterest", description: "Standard Pinterest pin (2:3)" },
+          { name: "Pinterest Story", width: 1080, height: 1920, platform: "pinterest", description: "Pinterest story (9:16)" }
+        );
+        break;
+      case "instagram":
+        formats.push(
+          { name: "Instagram Post", width: 1080, height: 1080, platform: "instagram", description: "Square Instagram post" },
+          { name: "Instagram Story", width: 1080, height: 1920, platform: "instagram", description: "Instagram story (9:16)" },
+          { name: "Instagram Reel", width: 1080, height: 1920, platform: "instagram", description: "Instagram reel (9:16)" }
+        );
+        break;
+      case "tiktok":
+        formats.push(
+          { name: "TikTok Video", width: 1080, height: 1920, platform: "tiktok", description: "TikTok video (9:16)" }
+        );
+        break;
+      case "twitter":
+        formats.push(
+          { name: "Twitter Post", width: 1200, height: 675, platform: "twitter", description: "Twitter/X post image" }
+        );
+        break;
+      case "facebook":
+        formats.push(
+          { name: "Facebook Post", width: 1200, height: 630, platform: "facebook", description: "Facebook post image" }
+        );
+        break;
     }
+
+    setExportFormats(formats);
   };
 
   const doGenerate = async ()=>{
@@ -509,16 +474,59 @@ export default function App(){
 
       console.log('Backend response status:', backendResponse.status);
       if (!backendResponse.ok) {
-        const errorData = await backendResponse.json();
-        console.error('Backend API error:', errorData);
-        throw new Error(`AI generation failed: ${errorData.message || backendResponse.status}`);
+        let errorMessage = `AI generation failed: ${backendResponse.status}`;
+        try {
+          const errorData = await backendResponse.json();
+          console.error('Backend API error:', errorData);
+          errorMessage = `AI generation failed: ${errorData.message || backendResponse.status}`;
+        } catch (parseError) {
+          console.error('Failed to parse error response as JSON:', parseError);
+          // Try to get the response as text
+          try {
+            const errorText = await backendResponse.text();
+            console.error('Error response text:', errorText);
+            errorMessage = `AI generation failed: ${errorText || backendResponse.status}`;
+          } catch (textError) {
+            console.error('Failed to get error response as text:', textError);
+          }
+        }
+        throw new Error(errorMessage);
       }
 
-      const data = await backendResponse.json();
-      console.log('Backend response data:', data);
-      setTitle(data.title);
-      setDesc(data.description);
-      setTags(data.tags.join(", "));
+      let data;
+      try {
+        data = await backendResponse.json();
+        console.log('Backend response data:', data);
+      } catch (parseError) {
+        console.error('Failed to parse backend response as JSON:', parseError);
+        // Try to get the response as text to see what's being returned
+        try {
+          const responseText = await backendResponse.text();
+          console.error('Raw response text:', responseText);
+          throw new Error(`Invalid JSON response from server: ${responseText.substring(0, 200)}`);
+        } catch (textError) {
+          console.error('Failed to get response as text:', textError);
+          throw new Error('Server returned invalid response format');
+        }
+      }
+
+      // Generate multiple variations
+      const variations = [];
+      for (let i = 0; i < 3; i++) {
+        variations.push({
+          id: i,
+          title: data.title + (i > 0 ? ` (Variation ${i + 1})` : ""),
+          description: data.description,
+          tags: data.tags,
+          timestamp: Date.now() + i * 1000 // Slight offset for uniqueness
+        });
+      }
+
+      setGeneratedVariations(variations);
+      setCurrentVariation(0);
+      setTitle(variations[0].title);
+      setDesc(variations[0].description);
+      setTags(variations[0].tags.join(", "));
 
       // For free tier, trigger canvas update to show branded preview
       if (!isPro) {
@@ -541,7 +549,7 @@ export default function App(){
         <div className="pp-brand">
           <img src="/logo.png" alt="Pin Pilot"/>
         </div>
-        <div className="pp-tagline">Pin better. Grow faster.</div>
+        <div className="pp-tagline">Create better. Post everywhere.</div>
       </header>
 
       {/* optional API banner */}
@@ -665,6 +673,35 @@ export default function App(){
             </select>
           </div>
 
+          {/* Platform Selection */}
+          <h3 style={{marginTop:18, marginBottom: 12, color: 'var(--text)'}}>📱 Target Platform</h3>
+          <div className="pp-row">
+            <label>Platform</label>
+            <select value={selectedPlatform} onChange={e=>{setSelectedPlatform(e.target.value as Platform); updateExportFormats(e.target.value as Platform);}}>
+              <option value="pinterest">📌 Pinterest</option>
+              <option value="instagram">📸 Instagram</option>
+              <option value="tiktok">🎵 TikTok</option>
+              <option value="twitter">🐦 Twitter/X</option>
+              <option value="facebook">👥 Facebook</option>
+            </select>
+            <div className="pp-sub">Choose your primary social platform for optimized content</div>
+          </div>
+
+          {/* Export Format Selection */}
+          <div className="pp-row">
+            <label>Export Format</label>
+            <select value={exportFormats.length > 0 ? exportFormats[0].name : ""}>
+              {exportFormats.map((format, idx) => (
+                <option key={idx} value={format.name}>
+                  {format.name} ({format.width}×{format.height})
+                </option>
+              ))}
+            </select>
+            <div className="pp-sub">
+              {exportFormats.length > 0 ? exportFormats[0].description : "Select a platform first"}
+            </div>
+          </div>
+
           <div className="pp-row">
             <label>Brand Color</label>
             <input value={brand.primary} onChange={e=>setBrand(b=>({...b, primary:hex(e.target.value,b.primary)}))}/>
@@ -687,87 +724,119 @@ export default function App(){
             </select>
           </div>
 
-          {isPro && (
-            <>
-              <h3 style={{marginTop: 24, marginBottom: 16, color: 'var(--text)'}}>
-                📌 Pinterest Publishing
-              </h3>
-
-              <ConnectPinterest />
-
-              <div className="pp-row">
-                <label>Pin Purpose/Niche</label>
-                <select>
-                  <option>Digital Products</option>
-                  <option>Business/Branding</option>
-                  <option>Educational Content</option>
-                  <option>Promotional</option>
-                  <option>Seasonal/Holiday</option>
-                  <option>Lifestyle</option>
-                  <option>DIY/Crafts</option>
-                  <option>Custom</option>
-                </select>
-                <div className="pp-sub">Helps optimize content for specific Pinterest audience</div>
-              </div>
-
-              <div className="pp-row">
-                <label>Select Board</label>
-                <select value={selectedBoard} onChange={e=>setSelectedBoard(e.target.value)} disabled={pinterestBoards.length === 0 && !isDemoConnected}>
-                  {pinterestBoards.length === 0 && !isDemoConnected ? (
-                    <option>Connect Pinterest account first...</option>
-                  ) : (
-                    <>
-                      <option value="">Choose a board...</option>
-                      {pinterestBoards.map((board: any) => (
-                        <option key={board.id} value={board.id}>
-                          {board.name} {window.location.search.includes('demo=1') ? '(Demo)' : ''}
-                        </option>
-                      ))}
-                    </>
-                  )}
-                </select>
-                <div className="pp-sub">
-                  Choose which Pinterest board to publish to
-                  {window.location.search.includes('demo=1') && (
-                    <span style={{color: '#10b981', fontWeight: 'bold'}}> 🎬 Demo Mode Active</span>
-                  )}
-                </div>
-              </div>
-
-              <div className="pp-row">
-                <label>Publishing Options</label>
-                <div style={{display: 'flex', gap: '12px', flexWrap: 'wrap'}}>
-                  <label style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px'}}>
-                    <input type="radio" name="publish" defaultChecked />
-                    Post Immediately
-                  </label>
-                  <label style={{display: 'flex', alignItems: 'center', gap: '6px', fontSize: '14px'}}>
-                    <input type="radio" name="publish" />
-                    Schedule for Later
-                  </label>
-                </div>
-              </div>
-
-              <div className="pp-row">
-                <label>Schedule Date/Time</label>
-                <input type="datetime-local" disabled />
-                <div className="pp-sub">Set when to publish this pin</div>
-              </div>
-
-              <div className="pp-row">
-                <label>Link Destination</label>
-                <input type="url" placeholder="https://your-shop.com/product" />
-                <div className="pp-sub">Where Pinterest users should go when they click your pin</div>
-              </div>
-            </>
-          )}
 
 
           <div className="pp-actions">
             <button className="pp-btn" onClick={doGenerate} disabled={aiLoading}>
-              {aiLoading? "Generating…" : "Generate Pin Content"}
+              {aiLoading? "Generating…" : `Generate ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)} Content`}
             </button>
-            <a className="pp-btn ghost" href={downloadUrl} download="pinpilot.png">Download Branded Image</a>
+            {downloadUrl && (
+              <div style={{display: 'flex', gap: '8px', flexWrap: 'wrap'}}>
+                <a className="pp-btn ghost" href={downloadUrl} download={`pinpilot-${selectedPlatform}.png`}>
+                  Download PNG
+                </a>
+                <button
+                  className="pp-btn ghost"
+                  onClick={() => {
+                    // Create JPEG version
+                    const canvas = cvsRef.current;
+                    if (canvas) {
+                      const jpegUrl = canvas.toDataURL('image/jpeg', 0.9);
+                      const link = document.createElement('a');
+                      link.href = jpegUrl;
+                      link.download = `pinpilot-${selectedPlatform}.jpg`;
+                      link.click();
+                    }
+                  }}
+                >
+                  Download JPEG
+                </button>
+                {generatedVariations.length > 1 && (
+                  <button
+                    className="pp-btn ghost"
+                    onClick={async () => {
+                      try {
+                        const zip = new JSZip();
+                        const canvas = cvsRef.current;
+
+                        if (!canvas) {
+                          alert('Canvas not available for download');
+                          return;
+                        }
+
+                        // Create a folder for the content
+                        const folderName = `pinpilot-${selectedPlatform}-content`;
+                        const contentFolder = zip.folder(folderName);
+
+                        // Add images for each variation
+                        for (let i = 0; i < generatedVariations.length; i++) {
+                          const variation = generatedVariations[i];
+
+                          // Temporarily update canvas with this variation
+                          const originalTitle = title;
+                          const originalDesc = desc;
+                          const originalTags = tags;
+
+                          setTitle(variation.title);
+                          setDesc(variation.description);
+                          setTags(variation.tags.join(", "));
+
+                          // Wait for canvas to update
+                          await new Promise(resolve => setTimeout(resolve, 100));
+
+                          // Generate PNG
+                          const pngDataUrl = canvas.toDataURL('image/png');
+                          const pngBlob = await fetch(pngDataUrl).then(r => r.blob());
+                          contentFolder.file(`variation-${i + 1}.png`, pngBlob);
+
+                          // Generate JPEG
+                          const jpegDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+                          const jpegBlob = await fetch(jpegDataUrl).then(r => r.blob());
+                          contentFolder.file(`variation-${i + 1}.jpg`, jpegBlob);
+                        }
+
+                        // Add content text file
+                        let contentText = `# Pin Pilot Content Package\n\n`;
+                        contentText += `Platform: ${selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)}\n`;
+                        contentText += `Generated: ${new Date().toLocaleString()}\n\n`;
+
+                        generatedVariations.forEach((variation, idx) => {
+                          contentText += `## Variation ${idx + 1}\n`;
+                          contentText += `Title: ${variation.title}\n`;
+                          contentText += `Description: ${variation.description}\n`;
+                          contentText += `Tags: ${variation.tags.join(", ")}\n\n`;
+                        });
+
+                        contentFolder.file('content.txt', contentText);
+
+                        // Generate and download ZIP
+                        const zipBlob = await zip.generateAsync({ type: 'blob' });
+                        const zipUrl = URL.createObjectURL(zipBlob);
+                        const link = document.createElement('a');
+                        link.href = zipUrl;
+                        link.download = `${folderName}.zip`;
+                        link.click();
+
+                        // Clean up
+                        URL.revokeObjectURL(zipUrl);
+
+                        // Restore original variation
+                        const currentVar = generatedVariations[currentVariation];
+                        setTitle(currentVar.title);
+                        setDesc(currentVar.description);
+                        setTags(currentVar.tags.join(", "));
+
+                      } catch (error) {
+                        console.error('Error creating ZIP file:', error);
+                        alert('Failed to create ZIP file. Please try downloading variations individually.');
+                      }
+                    }}
+                  >
+                    Download All ({generatedVariations.length})
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="pp-footer-actions">
@@ -777,7 +846,35 @@ export default function App(){
 
         {/* RIGHT CARD */}
         <section className="pp-card preview-wrap" style={{marginBottom: '24px'}}>
-          <h3>Preview & Content</h3>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px'}}>
+            <h3>Preview & Content</h3>
+            {generatedVariations.length > 1 && (
+              <div style={{display: 'flex', gap: '8px', alignItems: 'center'}}>
+                <span style={{fontSize: '14px', color: 'var(--muted)'}}>Variation:</span>
+                <select
+                  value={currentVariation}
+                  onChange={e => {
+                    const variationIndex = parseInt(e.target.value);
+                    setCurrentVariation(variationIndex);
+                    const variation = generatedVariations[variationIndex];
+                    setTitle(variation.title);
+                    setDesc(variation.description);
+                    setTags(variation.tags.join(", "));
+                  }}
+                  style={{fontSize: '14px', padding: '4px 8px'}}
+                >
+                  {generatedVariations.map((variation, idx) => (
+                    <option key={variation.id} value={idx}>
+                      {idx + 1}
+                    </option>
+                  ))}
+                </select>
+                <span style={{fontSize: '12px', color: 'var(--muted)'}}>
+                  of {generatedVariations.length}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="pp-sub">What you see is what you export.</div>
 
           <div className="canvas-frame">
@@ -802,11 +899,11 @@ export default function App(){
 
             {!isPro && (
               <div className="pp-sub">
-                <strong>Pro Features:</strong> Manual branding controls, Pinterest account connection, and scheduling.
+                <strong>Pro Features:</strong> Manual branding controls, multi-platform export, and advanced templates.
                 Add <code>?pro=1</code> to your URL to preview all features.
               </div>
             )}
-            <div className="pp-sub">Powered by Google Gemini & Pinterest best-practices.</div>
+            <div className="pp-sub">Powered by Google Gemini & social media best-practices.</div>
           </div>
         </section>
       </div>
@@ -820,7 +917,7 @@ export default function App(){
                 🚀 Upgrade to Pin Pilot Pro
               </h3>
               <p style={{margin: 0, color: 'var(--muted)', fontSize: '16px'}}>
-                Unlock advanced features and supercharge your Pinterest marketing
+                Unlock advanced features and supercharge your social media marketing
               </p>
             </div>
 
@@ -834,11 +931,11 @@ export default function App(){
                 </div>
                 <p className="pp-pricing-description">Limited time offer for the first 20 subscribers</p>
                 <ul className="pp-pricing-features">
-                  <li>✅ Automated pin creation with AI branding</li>
-                  <li>✅ Optimized titles, descriptions & keywords</li>
-                  <li>✅ Download high-quality branded pins</li>
-                  <li>✅ Pinterest account connection & scheduling</li>
-                  <li>✅ Manual branding controls</li>
+                  <li>✅ AI-powered content creation for all platforms</li>
+                  <li>✅ Multi-format export (Instagram, TikTok, Twitter, etc.)</li>
+                  <li>✅ Multiple content variations per generation</li>
+                  <li>✅ Advanced branding and template controls</li>
+                  <li>✅ Batch download and export options</li>
                   <li>✅ Priority support</li>
                 </ul>
                 <a href="/api/stripe/checkout" className="pp-btn pp-pricing-btn">
@@ -856,7 +953,7 @@ export default function App(){
                 <ul className="pp-pricing-features">
                   <li>✅ Everything in Founder's Plan</li>
                   <li>✅ Advanced analytics & insights</li>
-                  <li>✅ Bulk pin creation & scheduling</li>
+                  <li>✅ Bulk content creation & management</li>
                   <li>✅ Custom branding templates</li>
                   <li>✅ API access for integrations</li>
                   <li>✅ White-label options</li>
